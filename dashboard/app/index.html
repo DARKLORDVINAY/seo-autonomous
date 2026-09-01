@@ -1,0 +1,38 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1">
+  <meta name="color-scheme" content="dark">
+  <title>Spiral Max · SEO Mission Control</title>
+  <link rel="stylesheet" href="/assets/style.css">
+  <script src="/assets/app.js" defer></script>
+</head>
+<body>
+  <aside class="sidebar">
+    <a class="brand" href="/" aria-label="Spiral Max home"><span class="mark">S</span><span>SPIRAL MAX<small>SEO MISSION CONTROL</small></span></a>
+    <p class="nav-label">WORKSPACE</p>
+    <nav id="navigation" aria-label="Mission views"></nav>
+    <div class="sidebar-foot"><span class="dot"></span> Evidence before action<small>Incremental qualified organic value</small></div>
+  </aside>
+  <main>
+    <header>
+      <div><p class="eyebrow">AUTONOMOUS SEO / CONTROL PLANE</p><h1 id="view-title">Overview</h1></div>
+      <div class="badges"><span id="source-badge" class="badge">Disconnected</span><span id="autonomy-badge" class="badge neutral">Level 1 · shadow</span></div>
+    </header>
+    <section id="connection" class="panel connection" aria-labelledby="connect-title">
+      <div><h2 id="connect-title">Connect to your mission</h2><p>Enter an operator token to read canonical state. The token stays in this tab’s memory.</p></div>
+      <form id="connect-form"><label for="token">Operator token</label><div class="inline"><input id="token" type="password" required autocomplete="off" placeholder="API operator token"><button type="submit">Connect</button></div></form>
+    </section>
+    <div id="workspace" hidden>
+      <div class="toolbar"><label for="site-select">Site <select id="site-select"></select></label><span id="period" class="muted"></span><div class="toolbar-actions"><button id="refresh" class="secondary">Refresh</button><button id="cycle">Run control cycle</button><button id="disconnect" class="text-button">Disconnect</button></div></div>
+      <section id="fixture-notice" class="notice" hidden><strong>Fixture workspace</strong> Synthetic observations verify software behaviour. They do not establish real search performance or business impact.</section>
+      <section id="overview"></section>
+      <section id="collection" class="panel" hidden><div class="section-heading"><h2 id="collection-title"></h2><span id="collection-count" class="muted"></span></div><p id="collection-description" class="muted"></p><div id="table" class="table-wrap"></div></section>
+    </div>
+    <p id="status" role="status" aria-live="polite"></p>
+    <footer>Observe → diagnose → challenge → act → measure → learn <span>Unknown values remain unknown.</span></footer>
+  </main>
+  <dialog id="record-dialog"><div class="section-heading"><h2>Canonical record</h2><button id="close-dialog" class="secondary">Close</button></div><pre id="record-json"></pre></dialog>
+</body>
+</html>

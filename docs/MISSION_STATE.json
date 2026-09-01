@@ -1,0 +1,244 @@
+{
+  "schema_version": 1,
+  "objective": "Maximise incremental qualified organic conversion value",
+  "success_criteria": [
+    "continuous real-data ingestion",
+    "evidence-backed opportunity detection",
+    "bounded specialist interpretation",
+    "independent verification",
+    "auditable reversible execution",
+    "experiment measurement",
+    "calibration and remembered failures"
+  ],
+  "constraints": [
+    "factual accuracy",
+    "brand integrity",
+    "Google spam policy",
+    "no low-value scaled content",
+    "no destructive actions",
+    "rollback",
+    "explicit causal uncertainty",
+    "no secrets in conversation or repository"
+  ],
+  "current_autonomy_level": 1,
+  "production_enabled": false,
+  "available_resources": {
+    "python": "3.12.13",
+    "shell": true,
+    "git": true,
+    "github_account": "DARKLORDVINAY",
+    "connected_repository": "DARKLORDVINAY/seo-autonomous",
+    "docker": false,
+    "postgres_binary": false,
+    "cloud_browser": true,
+    "cloudflare_plugin_available": true,
+    "cloudflare_plugin_connected": false,
+    "git_repository_create_tool": false,
+    "site_repository": "DARKLORDVINAY/seo-test-lab",
+    "github_actions": true,
+    "cloudflare_pages_git_integration": true
+  },
+  "unknowns": [
+    "durable PostgreSQL/container host",
+    "Search Console API read identity and property access",
+    "dedicated test GA4 property/measurement ID",
+    "live model credentials and explicit price budget"
+  ],
+  "blockers": [
+    "Durable PostgreSQL/container hosting has not been connected",
+    "Google analytics/Search Console API identities are not configured",
+    "Direct Cloudflare account operations are unavailable; existing Git deployment is usable"
+  ],
+  "critical_path": [
+    "publish verified source through GitHub PR and run actual PostgreSQL/container CI",
+    "publish the 26-page release through the existing Cloudflare Git integration",
+    "verify public crawl/browser behaviour and sandbox deployment rollback",
+    "connect durable backend host, GSC API and separate test GA4 property",
+    "retain Level 1; assess existing graduation criteria after independent real outcomes"
+  ],
+  "budget": {
+    "max_build_workers": 5,
+    "paid_api_calls_authorised_for_this_build": 0,
+    "max_specialists_per_runtime_cycle": 3,
+    "production_write_budget": 0
+  },
+  "assumptions": [
+    {
+      "id": "A1",
+      "claim": "First target is versioned static HTML; WordPress adapter remains available for later sites",
+      "status": "resolved_for_first_target"
+    }
+  ],
+  "decisions": [
+    {
+      "id": "D1",
+      "decision": "Build and test using labelled fixtures while implementing real-provider adapters"
+    },
+    {
+      "id": "D2",
+      "decision": "Do not reuse the unrelated public spiral-cli repository as the SEO repository"
+    },
+    {
+      "id": "D3",
+      "decision": "User selected a controlled public SEO Test Lab as the first target, GitHub to Cloudflare Pages Free preferred; commercial sites remain unconnected."
+    },
+    {
+      "id": "D4",
+      "decision": "Freeze structural ground truth separately from published release inventory and all detector/agent inputs; never interpret synthetic lab conversions as business value."
+    },
+    {
+      "id": "D5",
+      "decision": "Use existing seo-test-lab repository for generated public assets and seo-autonomous for canonical source and CI. Preserve starter Search Console tag. Manual user-authorised deployment is audited separately from the disabled autonomous executor."
+    }
+  ],
+  "status": "github_release_preparation",
+  "verified_checkpoint": {
+    "checked_at": "2026-09-01T22:47:56.921493+00:00",
+    "tests": 633,
+    "failures": 0,
+    "errors": 0,
+    "skipped": 2,
+    "duration_seconds": 18.632,
+    "passed": 631,
+    "skipped_gates": [
+      {
+        "test": "test_postgresql_live_migration_audit_and_leases",
+        "reason": "Live Postgres gate requires TEST_POSTGRES_URL"
+      },
+      {
+        "test": "test_postgres_runtime_role_cannot_control_schema_or_immutable_records",
+        "reason": "Actual PostgreSQL role gate requires TEST_POSTGRES_URL"
+      }
+    ],
+    "ruff": "passed",
+    "javascript_syntax": "passed",
+    "sqlite_migration_drift": "none",
+    "actual_mcp_stdio": "passed",
+    "mcp_tools": 37,
+    "real_provider_calls": 0,
+    "production_mutations": 0,
+    "real_seo_impact": "unmeasured",
+    "postgres_container_execution": "not_available_locally",
+    "browser_rendering": "26-page release home DOM verified on actual Pages preview; complete public browser gate pending",
+    "ci_execution": "pending_canonical_source_PR",
+    "mutation_scope": "autonomous executor only; manual sandbox Git deployment operations are separately audited",
+    "test_lab": {
+      "pages": 26,
+      "artifact_benchmark": {
+        "tp": 13,
+        "fp": 0,
+        "fn": 0,
+        "precision": 1.0,
+        "recall": 1.0,
+        "correct_no_action": 13,
+        "source": "frozen canonical packet reassessed by corrected independent evaluator"
+      },
+      "artifact_rollback": "passed; every tracked byte restored",
+      "public_url": "https://seo-test-lab.pages.dev",
+      "site_pr": "https://github.com/DARKLORDVINAY/seo-test-lab/pull/1",
+      "public_benchmark": "pending",
+      "public_rollback": "pending",
+      "level_2_eligible": false
+    }
+  },
+  "completed": [
+    "official API checks",
+    "42-table canonical model and migration",
+    "provider clients and fixtures",
+    "deterministic analytics",
+    "guarded revision execution and rollback",
+    "bounded SDK runtime",
+    "MCP semantic tools",
+    "independent security review with four reproduced fixes",
+    "qualified GA4 mapping and freshness",
+    "durable model budgets and exact verifier target",
+    "scheduler and shared commit fencing",
+    "end-to-end fixture execution and rollback",
+    "immutable prediction and independent adjudication",
+    "downward-only calibration consequences",
+    "admin business configuration and pause",
+    "Mission Control assets",
+    "Docker and PostgreSQL CI package",
+    "full foundation documentation",
+    "actual MCP protocol acceptance",
+    "26-page labelled static Test Lab release",
+    "frozen evaluator-only ground truth",
+    "owner-attested inventory and generic structural detectors",
+    "artifact shadow run and byte-exact Git rollback",
+    "GitHub and Pages continuity reconciliation"
+  ],
+  "updated_at": "2026-09-01T22:47:56.921493+00:00",
+  "phase_status": {
+    "0": "documentation and capability checks complete",
+    "1": "local foundation passed; actual PostgreSQL pending",
+    "2": "adapters implemented and mocked tests passed; real ingestion pending",
+    "3": "fixture ranked opportunities passed",
+    "4": "bounded contracts and SDK boundary passed; real model calls not made",
+    "5": "fixture change/readback/rollback passed; production CMS pending",
+    "6": "local adversarial suite passed; infrastructure gates pending",
+    "7": "fixture shadow loop passed; real shadow evaluation pending",
+    "8": "disabled; no automatic graduation"
+  },
+  "target": {
+    "kind": "controlled_public_seo_test_lab",
+    "preferred_repository": "DARKLORDVINAY/seo-autonomous",
+    "repository_created": true,
+    "preferred_host": "Cloudflare Pages Free",
+    "public_url": "https://seo-test-lab.pages.dev",
+    "cms": "versioned static HTML",
+    "planned_pages": 26,
+    "conversion_definition": "lab_checklist_complete: voluntary completed three-step demo checklist; no commercial monetary value",
+    "analytics_connected": false,
+    "repository": "DARKLORDVINAY/seo-test-lab",
+    "source_repository": "DARKLORDVINAY/seo-autonomous",
+    "deployed_pages_observed": 1,
+    "release_pages_prepared": 26,
+    "gsc_tag_observed": true,
+    "gsc_api_connected": false,
+    "release_pr": "https://github.com/DARKLORDVINAY/seo-test-lab/pull/1",
+    "release_commit": "8ae614274b14a36a9677831819e948c105aaf375",
+    "manifest_sha256": "9b75ff958a5fd675efbe263b5e0dd91d6949759c5308169b03207cc6dc852c27",
+    "public_canonical_site_id": "86fb5cb7-5247-4cc7-a2fb-34a0a7bd5bc9",
+    "release_experiment_id": "530f3a79-a8b5-4038-a4bb-068a8895b118"
+  },
+  "ground_truth": {
+    "path": "test_lab/ground_truth.json",
+    "sha256": "924d52d55671481cd51ea37ead6ef36d46dc7bd99c113c77c156be83d1a1418d",
+    "expected_issue_units": 13,
+    "clean_control_pages": 13,
+    "kind": "development_structural_benchmark_not_business_calibration"
+  },
+  "facts": [
+    {
+      "claim": "Both named GitHub repositories are accessible; canonical repository was empty and is now initialised with a README",
+      "source": "Connected GitHub repository and create_file receipts",
+      "checked_at": "2026-09-01T22:43:13.129591+00:00"
+    },
+    {
+      "claim": "Existing main commit f998a2242099f4ccb29d3fcfc64a50109fcd8129 has successful Cloudflare Pages deployment 06753a20-640b-46eb-a8d1-b659064acd2b",
+      "source": "GitHub Cloudflare Pages check run",
+      "checked_at": "2026-09-01T22:43:13.129591+00:00"
+    },
+    {
+      "claim": "Starter public page and its Search Console tag render at https://seo-test-lab.pages.dev/",
+      "source": "Cloud Browser DOM and GitHub index.html",
+      "checked_at": "2026-09-01T22:43:13.129591+00:00"
+    }
+  ],
+  "contradictions": [
+    {
+      "claim": "An earlier memory gave a different Search Console verification value",
+      "resolution": "Preserve directly observed Pages and GitHub index.html value from current deployment; account/API verification remains unconfirmed",
+      "status": "resolved_for_build"
+    }
+  ],
+  "failures": [
+    {
+      "kind": "secondary_workers_build",
+      "status": "unresolved",
+      "claim": "Existing Workers mirror build fails for branch release; selected Cloudflare Pages build succeeds",
+      "source": "GitHub check runs for 8ae614274b14a36a9677831819e948c105aaf375",
+      "effect": "Not treated as a Pages success/failure; mirror not the selected target"
+    }
+  ]
+}
