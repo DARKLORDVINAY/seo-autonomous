@@ -2,11 +2,17 @@ name: canonical-seo-gates
 
 on:
   push:
+    branches-ignore:
+      - 'verify/public-lab-*'
   pull_request:
   workflow_dispatch:
 
 permissions:
   contents: read
+
+concurrency:
+  group: canonical-${{ github.head_ref || github.ref_name }}
+  cancel-in-progress: true
 
 jobs:
   verify:
