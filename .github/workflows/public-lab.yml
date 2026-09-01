@@ -2,9 +2,16 @@ name: public-test-lab-shadow
 
 on:
   workflow_dispatch:
+  push:
+    branches:
+      - 'verify/public-lab-*'
 
 permissions:
   contents: read
+
+concurrency:
+  group: public-test-lab-observation
+  cancel-in-progress: false
 
 jobs:
   observe-public-lab:
@@ -40,21 +47,43 @@ jobs:
           cache-dependency-path: requirements.lock.txt
       - name: Install locked observer dependencies
         run: python -m pip install --requirement requirements.lock.txt
-      - name: Build owner-attested public release independently of hosted content
+      - name: Read the owner-pinned release reference
+        id: target
         run: |
           python - <<'PY'
-          import json
+          import json, os, re
           from pathlib import Path
-          from test_lab.build import build_site
           config = json.loads(Path('test_lab/public_target.json').read_text())
-          build_site(config['base_url'], Path('artifacts/test-lab-public'), verification_token=config['gsc_verification_token'], measurement_id=config['ga4_measurement_id'])
+          assert re.fullmatch(r'[0-9a-f]{40}', config['release_commit'])
+          assert re.fullmatch(r'[0-9a-f]{64}', config['expected_manifest_sha256'])
+          with open(os.environ['GITHUB_OUTPUT'], 'a') as output:
+              output.write('release_ref=' + config['release_commit'] + '\n')
+          PY
+      - name: Check out the reviewed public release separately from the served site
+        uses: actions/checkout@v4
+        with:
+          repository: DARKLORDVINAY/seo-test-lab
+          ref: ${{ steps.target.outputs.release_ref }}
+          path: artifacts/test-lab-public
+          persist-credentials: false
+      - name: Verify independent owner attestation before network observation
+        run: |
+          python - <<'PY'
+          import hashlib, json
+          from pathlib import Path
+          config = json.loads(Path('test_lab/public_target.json').read_text())
+          payload = Path('artifacts/test-lab-public/inventory.json').read_bytes()
+          assert hashlib.sha256(payload).hexdigest() == config['expected_manifest_sha256']
+          assert json.loads(payload)['base_url'] == config['base_url']
           PY
       - name: Run real public crawl and Level 1 shadow benchmark
         run: python scripts/test_lab.py --mode public --base-url https://seo-test-lab.pages.dev --build-dir artifacts/test-lab-public --report artifacts/test-lab-public-report.json --idempotency-key public-ci-${{ github.run_id }}-${{ github.run_attempt }}
       - uses: actions/setup-node@v4
+        if: ${{ !cancelled() }}
         with:
           node-version: "22"
       - name: Verify rendered public pages, test interaction and real 404
+        if: ${{ !cancelled() }}
         run: |
           npm install --no-save --ignore-scripts --no-audit --no-fund playwright@1.62.1
           npx playwright install --with-deps chromium
