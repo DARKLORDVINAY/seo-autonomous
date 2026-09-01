@@ -1,0 +1,111 @@
+name: canonical-seo-gates
+
+on:
+  push:
+  pull_request:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  verify:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    services:
+      postgres:
+        image: postgres:17.11
+        env:
+          POSTGRES_USER: seo_ci_owner
+          POSTGRES_PASSWORD: disposable-ci-only-not-a-deployment-secret
+          POSTGRES_DB: seo_ci
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd "pg_isready -U seo_ci_owner -d seo_ci"
+          --health-interval 5s
+          --health-timeout 5s
+          --health-retries 20
+    env:
+      ENVIRONMENT: test
+      DATABASE_URL: postgresql+psycopg://seo_ci_owner:disposable-ci-only-not-a-deployment-secret@127.0.0.1:5432/seo_ci
+      TEST_POSTGRES_URL: postgresql+psycopg://seo_ci_owner:disposable-ci-only-not-a-deployment-secret@127.0.0.1:5432/seo_ci
+      PROVIDER_MODE: fixture
+      AGENT_MODE: fixture
+      SCHEDULER_ENABLED: "false"
+      PRODUCTION_ENABLED: "false"
+      SHADOW_MODE: "true"
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+          cache: pip
+          cache-dependency-path: requirements.lock.txt
+      - name: Install locked dependencies
+        run: python -m pip install --requirement requirements.lock.txt
+      - name: Lint
+        run: ruff check .
+      - name: Migrate actual PostgreSQL and check drift
+        run: |
+          python -m alembic upgrade head
+          python -m alembic check
+      - name: Run complete suite including actual PostgreSQL privilege and lease gates
+        run: python -m pytest -q --junitxml=artifacts/test-results.xml
+      - name: Build labelled static lab and run evaluator-isolated shadow benchmark on PostgreSQL
+        run: |
+          python test_lab/build.py --fixture --base-url https://example.test --output artifacts/test-lab-site
+          python scripts/test_lab.py --mode artifact --base-url https://example.test --build-dir artifacts/test-lab-site --report artifacts/test-lab-report.json --idempotency-key ci-lab-shadow
+        env:
+          LAB_DATABASE_URL: postgresql+psycopg://seo_ci_owner:disposable-ci-only-not-a-deployment-secret@127.0.0.1:5432/seo_ci
+      - name: Audit isolated static-release rollback against PostgreSQL state
+        run: |
+          python - <<'PY'
+          import json, os
+          from pathlib import Path
+          from backend.app.db.session import make_engine, make_session_factory
+          from scripts.lab_rollback_drill import run_drill
+          report = json.loads(Path('artifacts/test-lab-report.json').read_text())
+          engine = make_engine(os.environ['DATABASE_URL'])
+          with make_session_factory(engine)() as session:
+              result = run_drill(session, report['site_id'], Path('artifacts/test-lab-site'), Path('artifacts/test-lab-rollback'))
+          engine.dispose()
+          Path('artifacts/test-lab-rollback.json').write_text(json.dumps(result, indent=2) + '\n')
+          PY
+      - name: Validate Compose and build nonroot image
+        run: |
+          python scripts/init_env.py
+          docker compose config --quiet
+          docker compose build api
+      - name: Start isolated fixture stack
+        env:
+          SCHEDULER_ENABLED: "true"
+        run: docker compose up -d --wait db api worker
+      - name: Check repeatable demo bootstrap as restricted runtime role
+        run: |
+          docker compose run --rm api bootstrap --demo
+          docker compose run --rm api bootstrap --demo
+          curl --fail --silent http://127.0.0.1:8000/readyz
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+      - name: Browser acceptance on the fixture dashboard
+        run: |
+          npm install --no-save --ignore-scripts --no-audit --no-fund playwright@1.62.1
+          npx playwright install --with-deps chromium
+          node scripts/check_dashboard.cjs
+          node scripts/check_test_lab.cjs
+      - name: Retain dashboard screenshots
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: dashboard-verification
+          path: |
+            artifacts/dashboard-*.png
+            artifacts/test-lab-*.png
+            artifacts/test-lab-*.json
+            artifacts/test-results.xml
+          if-no-files-found: ignore
+      - name: Stop isolated test stack
+        if: always()
+        run: docker compose down

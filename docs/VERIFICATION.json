@@ -1,0 +1,49 @@
+{
+  "checked_at": "2026-09-01T22:47:56.921493+00:00",
+  "tests": 633,
+  "failures": 0,
+  "errors": 0,
+  "skipped": 2,
+  "duration_seconds": 18.632,
+  "passed": 631,
+  "skipped_gates": [
+    {
+      "test": "test_postgresql_live_migration_audit_and_leases",
+      "reason": "Live Postgres gate requires TEST_POSTGRES_URL"
+    },
+    {
+      "test": "test_postgres_runtime_role_cannot_control_schema_or_immutable_records",
+      "reason": "Actual PostgreSQL role gate requires TEST_POSTGRES_URL"
+    }
+  ],
+  "ruff": "passed",
+  "javascript_syntax": "passed",
+  "sqlite_migration_drift": "none",
+  "actual_mcp_stdio": "passed",
+  "mcp_tools": 37,
+  "real_provider_calls": 0,
+  "production_mutations": 0,
+  "real_seo_impact": "unmeasured",
+  "postgres_container_execution": "not_available_locally",
+  "browser_rendering": "26-page release home DOM verified on actual Pages preview; complete public browser gate pending",
+  "ci_execution": "pending_canonical_source_PR",
+  "mutation_scope": "autonomous executor only; manual sandbox Git deployment operations are separately audited",
+  "test_lab": {
+    "pages": 26,
+    "artifact_benchmark": {
+      "tp": 13,
+      "fp": 0,
+      "fn": 0,
+      "precision": 1.0,
+      "recall": 1.0,
+      "correct_no_action": 13,
+      "source": "frozen canonical packet reassessed by corrected independent evaluator"
+    },
+    "artifact_rollback": "passed; every tracked byte restored",
+    "public_url": "https://seo-test-lab.pages.dev",
+    "site_pr": "https://github.com/DARKLORDVINAY/seo-test-lab/pull/1",
+    "public_benchmark": "pending",
+    "public_rollback": "pending",
+    "level_2_eligible": false
+  }
+}

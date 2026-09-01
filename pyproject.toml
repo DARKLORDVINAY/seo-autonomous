@@ -1,0 +1,35 @@
+[build-system]
+requires = ["setuptools>=75"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "spiral-max-seo"
+version = "0.1.0"
+description = "Evidence-led, bounded autonomous SEO control system"
+requires-python = ">=3.12"
+dependencies = [
+  "fastapi>=0.115,<1", "uvicorn>=0.30,<1", "SQLAlchemy>=2.0,<3",
+  "alembic>=1.14,<2", "psycopg[binary]>=3.2,<4", "pydantic>=2.10,<3",
+  "pydantic-settings>=2.7,<3", "httpx[socks]>=0.28,<1", "httpcore>=1.0.9,<1.1", "beautifulsoup4>=4.12,<5",
+  "defusedxml>=0.7,<1", "openai-agents>=0.2,<1", "mcp>=1.12,<2",
+  "google-auth>=2.35,<3", "requests>=2.32,<3", "structlog>=25,<27",
+  "APScheduler>=3.11,<4", "opentelemetry-api>=1.30,<2",
+  "opentelemetry-sdk>=1.30,<2", "opentelemetry-instrumentation-fastapi>=0.51b0,<1",
+]
+
+[project.optional-dependencies]
+dev = ["pytest>=8,<10", "pytest-asyncio>=0.24,<2", "respx>=0.22,<1", "ruff>=0.9,<1"]
+
+[tool.setuptools.packages.find]
+include = ["backend*", "seo_mcp*"]
+
+[tool.pytest.ini_options]
+testpaths = ["tests", "mcp/tests"]
+pythonpath = ["."]
+asyncio_mode = "auto"
+
+[tool.ruff]
+line-length = 120
+
+[tool.ruff.lint]
+select = ["E4", "E7", "E9", "F"]

@@ -1,0 +1,165 @@
+name: spiral-max-seo
+
+x-runtime-environment: &runtime-environment
+  ENVIRONMENT: production
+  POSTGRES_HOST: db
+  POSTGRES_PORT: "5432"
+  POSTGRES_DB: ${POSTGRES_DB:-seo}
+  POSTGRES_USER: ${POSTGRES_APP_USER:-seo_app}
+  POSTGRES_PASSWORD: ${POSTGRES_APP_PASSWORD:?Run python scripts/init_env.py first}
+  API_TOKEN: ${API_TOKEN:?Run python scripts/init_env.py first}
+  APPROVAL_TOKEN: ${APPROVAL_TOKEN:?Run python scripts/init_env.py first}
+  ADMIN_TOKEN: ${ADMIN_TOKEN:?Run python scripts/init_env.py first}
+  AUTONOMY_LEVEL: ${AUTONOMY_LEVEL:-1}
+  PRODUCTION_ENABLED: ${PRODUCTION_ENABLED:-false}
+  SHADOW_MODE: ${SHADOW_MODE:-true}
+  PROVIDER_MODE: ${PROVIDER_MODE:-fixture}
+  AGENT_MODE: ${AGENT_MODE:-fixture}
+  SCHEDULER_ENABLED: ${SCHEDULER_ENABLED:-true}
+  SCHEDULER_TIMEZONE: ${SCHEDULER_TIMEZONE:-UTC}
+  SCHEDULER_LEASE_SECONDS: ${SCHEDULER_LEASE_SECONDS:-300}
+  MAX_DAILY_ACTIONS: ${MAX_DAILY_ACTIONS:-5}
+  MAX_AGENT_TURNS: ${MAX_AGENT_TURNS:-4}
+  MAX_AGENT_CALLS_PER_RUN: ${MAX_AGENT_CALLS_PER_RUN:-8}
+  MAX_DAILY_COST_USD: ${MAX_DAILY_COST_USD:-5}
+  MAX_CRAWL_PAGES: ${MAX_CRAWL_PAGES:-50}
+  MAX_PAGES_PER_CRAWL: ${MAX_PAGES_PER_CRAWL:-50}
+  CRAWL_TIMEOUT_SECONDS: ${CRAWL_TIMEOUT_SECONDS:-15}
+  CRAWL_MAX_BYTES: ${CRAWL_MAX_BYTES:-2000000}
+  ALLOWED_HOSTS: ${ALLOWED_HOSTS:-["localhost","127.0.0.1","backend","api"]}
+  CORS_ORIGINS: ${CORS_ORIGINS:-[]}
+  LOG_LEVEL: ${LOG_LEVEL:-INFO}
+  OPENAI_API_KEY: ${OPENAI_API_KEY:-}
+  OPENAI_MODEL: ${OPENAI_MODEL:-}
+  GOOGLE_APPLICATION_CREDENTIALS: ${GOOGLE_APPLICATION_CREDENTIALS:-}
+  GSC_PROPERTY: ${GSC_PROPERTY:-}
+  GA4_PROPERTY_ID: ${GA4_PROPERTY_ID:-}
+  WORDPRESS_URL: ${WORDPRESS_URL:-}
+  WORDPRESS_USERNAME: ${WORDPRESS_USERNAME:-}
+  WORDPRESS_APPLICATION_PASSWORD: ${WORDPRESS_APPLICATION_PASSWORD:-}
+
+x-application: &application
+  image: spiral-max-seo:local
+  build:
+    context: .
+    dockerfile: docker/Dockerfile
+  init: true
+  user: "10001:10001"
+  read_only: true
+  tmpfs:
+    - /tmp:rw,noexec,nosuid,size=64m,mode=1777
+  cap_drop: [ALL]
+  security_opt: [no-new-privileges:true]
+  stop_grace_period: 150s
+  logging:
+    driver: json-file
+    options:
+      max-size: "10m"
+      max-file: "3"
+
+services:
+  db:
+    image: postgres:17.11
+    restart: unless-stopped
+    environment:
+      POSTGRES_DB: ${POSTGRES_DB:-seo}
+      POSTGRES_USER: ${POSTGRES_USER:-seo_owner}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:?Run python scripts/init_env.py first}
+      POSTGRES_INITDB_ARGS: --auth-host=scram-sha-256
+    volumes:
+      - seo-postgres:/var/lib/postgresql/data
+    healthcheck:
+      test: [CMD-SHELL, 'pg_isready -U "$${POSTGRES_USER}" -d "$${POSTGRES_DB}"']
+      interval: 10s
+      timeout: 5s
+      retries: 10
+      start_period: 20s
+    logging:
+      driver: json-file
+      options:
+        max-size: "10m"
+        max-file: "3"
+
+  migrate:
+    <<: *application
+    restart: "no"
+    command: [migrate]
+    environment:
+      POSTGRES_HOST: db
+      POSTGRES_PORT: "5432"
+      POSTGRES_DB: ${POSTGRES_DB:-seo}
+      POSTGRES_USER: ${POSTGRES_USER:-seo_owner}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:?Run python scripts/init_env.py first}
+      POSTGRES_APP_USER: ${POSTGRES_APP_USER:-seo_app}
+      POSTGRES_APP_PASSWORD: ${POSTGRES_APP_PASSWORD:?Run python scripts/init_env.py first}
+    depends_on:
+      db:
+        condition: service_healthy
+
+  api:
+    <<: *application
+    restart: unless-stopped
+    command: [api]
+    environment: *runtime-environment
+    ports:
+      - "127.0.0.1:${API_PORT:-8000}:8000"
+    networks:
+      default:
+        aliases: [backend]
+    depends_on:
+      db:
+        condition: service_healthy
+      migrate:
+        condition: service_completed_successfully
+    healthcheck:
+      test: [CMD, python, -c, "import urllib.request; urllib.request.urlopen('http://127.0.0.1:8000/readyz', timeout=4).read()"]
+      interval: 30s
+      timeout: 5s
+      retries: 3
+      start_period: 30s
+
+  worker:
+    <<: *application
+    restart: unless-stopped
+    command: [worker]
+    environment: *runtime-environment
+    depends_on:
+      db:
+        condition: service_healthy
+      migrate:
+        condition: service_completed_successfully
+    healthcheck:
+      test: [CMD, python, -m, backend.app.scheduler, --healthcheck]
+      interval: 30s
+      timeout: 5s
+      retries: 3
+      start_period: 60s
+
+  mcp:
+    <<: *application
+    profiles: [mcp]
+    restart: unless-stopped
+    command: [mcp]
+    environment:
+      SEO_API_BASE_URL: http://backend:8000
+      API_TOKEN: ${API_TOKEN:?Run python scripts/init_env.py first}
+      MCP_PORT: "8001"
+      MCP_PUBLIC_URL: ${MCP_PUBLIC_URL:-}
+      MCP_OAUTH_ISSUER: ${MCP_OAUTH_ISSUER:-}
+      MCP_ALLOWED_SUBJECTS: ${MCP_ALLOWED_SUBJECTS:-}
+      MCP_OAUTH_PUBLIC_KEY_FILE: /run/secrets/mcp-public-key.pem
+    ports:
+      - "127.0.0.1:${MCP_PORT:-8001}:8001"
+    volumes:
+      - type: bind
+        source: ${MCP_OAUTH_PUBLIC_KEY_HOST_FILE:-./secrets/mcp-public-key.pem}
+        target: /run/secrets/mcp-public-key.pem
+        read_only: true
+        bind:
+          create_host_path: false
+    depends_on:
+      api:
+        condition: service_healthy
+
+volumes:
+  seo-postgres:

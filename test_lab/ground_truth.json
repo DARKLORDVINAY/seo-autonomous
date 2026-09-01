@@ -1,0 +1,45 @@
+{
+  "schema_version": 1,
+  "benchmark_id": "public-lab-v1",
+  "frozen_before_detector_tuning": true,
+  "scope": "Owner-authored structural conditions in one 26-page educational demonstration website. This manifest is evaluator-only and is never published or passed to a detector or agent.",
+  "expected_issues": [
+    {"id": "orphan-response-headers", "kind": "orphan_page", "path": "/reference/response-headers/", "related_paths": [], "evidence_facets": {"incoming_html_sources": 0, "listed_in_sitemap": true, "desired_indexing": "index"}},
+    {"id": "orphan-link-labels", "kind": "orphan_page", "path": "/reference/link-labels/", "related_paths": [], "evidence_facets": {"incoming_html_sources": 0, "listed_in_sitemap": true, "desired_indexing": "index"}},
+    {"id": "duplicate-checklist-title", "kind": "duplicate_title", "path": "/guides/page-checklist/", "related_paths": ["/guides/preflight-checklist/"], "evidence_facets": {"exact_shared_value": "A practical page checklist | Spiral Max SEO Test Lab", "distinct_main_content": true}},
+    {"id": "duplicate-checklist-description", "kind": "duplicate_meta_description", "path": "/guides/page-checklist/", "related_paths": ["/guides/preflight-checklist/"], "evidence_facets": {"exact_shared_value": "A practical checklist for reviewing a small educational web page before sharing it.", "distinct_main_content": true}},
+    {"id": "weak-resource-navigation", "kind": "weak_internal_links", "path": "/guides/linked-resources/", "related_paths": ["/guides/"], "evidence_facets": {"incoming_html_sources": 1, "other_non_orphan_pages_minimum_incoming_sources": 2}},
+    {"id": "broken-status-reference", "kind": "broken_internal_link", "path": "/guides/status-codes/", "related_paths": ["/reference/missing-response-example/"], "evidence_facets": {"target_http_status": 404}},
+    {"id": "wrong-url-preference", "kind": "canonical_mismatch", "path": "/guides/url-preferences/", "related_paths": ["/guides/canonical-urls/"], "evidence_facets": {"desired_indexing": "index", "intended_canonical_path": "/guides/url-preferences/", "observed_canonical_path": "/guides/canonical-urls/", "target_exists": true, "distinct_main_content": true}},
+    {"id": "unintended-crawl-exclusion", "kind": "accidental_noindex", "path": "/guides/crawl-eligibility/", "related_paths": [], "evidence_facets": {"desired_indexing": "index", "observed_directive": "noindex, follow", "robots_allows_crawling": true}},
+    {"id": "thin-navigation-note", "kind": "thin_content", "path": "/notes/navigation-draft/", "related_paths": [], "evidence_facets": {"purpose": "note", "main_word_count_max": 45, "promised_need_not_satisfied": true}},
+    {"id": "thin-metadata-note", "kind": "thin_content", "path": "/notes/metadata-draft/", "related_paths": [], "evidence_facets": {"purpose": "note", "main_word_count_max": 45, "promised_need_not_satisfied": true}},
+    {"id": "overlapping-title-exercises", "kind": "potential_topic_overlap", "path": "/exercises/title-review/", "related_paths": ["/exercises/title-audit/"], "evidence_facets": {"same_task_and_near_duplicate_main_text": true, "metadata_distinct": true, "actual_query_cannibalisation": "unknown_without_search_console_data", "action": "REVIEW_OR_NO_ACTION"}},
+    {"id": "release-notes-omitted", "kind": "sitemap_missing_page", "path": "/release-notes/", "related_paths": [], "evidence_facets": {"desired_indexing": "index", "http_status": 200, "incoming_html_sources_minimum": 2, "listed_in_sitemap": false}},
+    {"id": "obsolete-sitemap-reference", "kind": "sitemap_unknown_page", "path": "/reference/missing-sitemap-example/", "related_paths": [], "evidence_facets": {"target_http_status": 404, "in_release_inventory": false, "listed_in_sitemap": true}}
+  ],
+  "clean_control_pages": [
+    "/", "/about/", "/guides/", "/guides/descriptive-titles/", "/guides/useful-summaries/",
+    "/guides/internal-links/", "/guides/canonical-urls/", "/guides/crawl-directives/",
+    "/guides/sitemaps/", "/guides/accessibility/", "/exercises/", "/glossary/", "/privacy/"
+  ],
+  "no_action_controls": [
+    {"path": "/privacy/", "reason": "A concise privacy notice satisfies a utility purpose; low word count alone is insufficient grounds to expand it."},
+    {"path": "/exercises/", "reason": "The interactive checklist supplies the page's utility; low prose word count alone is not a defect."},
+    {"path": "/guides/", "reason": "A navigation hub is useful through its curated destinations, not a prose quota."},
+    {"path": "/guides/descriptive-titles/", "reason": "A useful descriptive-title guide with unique metadata, a self canonical and multiple incoming links needs no seeded repair."}
+  ],
+  "known_ancillary_observations": [
+    {"path": "/guides/crawl-eligibility/", "observation": "The noindex URL also appears in the sitemap; this is the same exclusion condition, not a separate independent fault for scoring."},
+    {"path": "/guides/url-preferences/", "observation": "The URL with a mismatching canonical also appears in the sitemap; this is the same canonical condition, not a separate independent fault for scoring."},
+    {"path": "/reference/missing-response-example/", "observation": "A true HTTP 404 is the target evidence for the broken link, not an accidentally noindexed release page."},
+    {"path": "/reference/missing-sitemap-example/", "observation": "A true HTTP 404 is the target evidence for the sitemap inconsistency, not an accidentally noindexed release page."}
+  ],
+  "limits": [
+    "Structural overlap is only potential cannibalisation. No query-level traffic, ranking, conversion or commercial impact is fabricated.",
+    "Owner intent establishes that the one noindex and one wrong canonical are accidental; an external crawl alone cannot establish intent.",
+    "These deterministic seeds are not evidence that the system can predict business outcomes or qualifies for Level 2.",
+    "The custom 404 page intentionally contains noindex and is outside the 26-page release inventory.",
+    "Live indexing, Search Console, GA4, rendered-browser verification and deployment rollback require separate observed evidence."
+  ]
+}

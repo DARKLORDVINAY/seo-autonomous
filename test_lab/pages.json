@@ -1,0 +1,333 @@
+{
+  "schema_version": 1,
+  "site_name": "Spiral Max SEO Test Lab",
+  "additional_sitemap_paths": ["/reference/missing-sitemap-example/"],
+  "pages": [
+    {
+      "path": "/", "purpose": "home", "eyebrow": "A public learning project",
+      "title": "Explore a small website, carefully | Spiral Max SEO Test Lab",
+      "description": "A clearly labelled demonstration website for learning about useful pages, internal navigation, metadata, and careful SEO evaluation.",
+      "heading": "Small pages. Observable decisions.",
+      "sections": [
+        {"paragraphs": ["Welcome to a compact educational website about publishing and reviewing web pages. The guides explain everyday choices such as writing a descriptive title, linking to a useful destination, and checking a response status. You can read the examples, follow the navigation, or try a short review exercise.", "This is a public demonstration and test project. Some pages deliberately contain imperfections so that an SEO control system can be evaluated against known conditions. The site does not sell services, represent a business, or claim customer results. A detected issue is an observation to investigate, not automatic permission to change a page."]},
+        {"heading": "Choose a route", "paragraphs": ["Start with the guides if you want practical explanations. The glossary provides short definitions. The exercise asks you to compare a page title, follow a link, and consider whether a page meets its purpose. No account or personal information is required.", "The project treats traffic, rankings, and clicks as intermediate measurements. A page can attract attention while failing its readers. Here, a practice completion is simply a test interaction; it is not a qualified lead, a purchase, or evidence of commercial value."]}
+      ],
+      "links": [
+        {"path": "/guides/descriptive-titles/", "label": "Write a descriptive page title"},
+        {"path": "/guides/useful-summaries/", "label": "Explain a page with a useful summary"},
+        {"path": "/guides/internal-links/", "label": "Connect pages with internal links"},
+        {"path": "/guides/status-codes/", "label": "Understand response status codes"},
+        {"path": "/guides/canonical-urls/", "label": "Read a canonical URL"},
+        {"path": "/guides/crawl-directives/", "label": "Distinguish crawl and indexing directives"},
+        {"path": "/guides/sitemaps/", "label": "Inspect a small XML sitemap"},
+        {"path": "/guides/accessibility/", "label": "Review basic page accessibility"},
+        {"path": "/guides/page-checklist/", "label": "Review one page as a reader"},
+        {"path": "/guides/preflight-checklist/", "label": "Prepare a site release"},
+        {"path": "/guides/url-preferences/", "label": "Keep an address preference record"},
+        {"path": "/guides/crawl-eligibility/", "label": "Check whether a page permits indexing"},
+        {"path": "/notes/navigation-draft/", "label": "Navigation planning note"},
+        {"path": "/notes/metadata-draft/", "label": "Metadata planning note"},
+        {"path": "/exercises/title-review/", "label": "Practice reviewing a page title"},
+        {"path": "/exercises/title-audit/", "label": "Practice auditing a page title"},
+        {"path": "/release-notes/", "label": "Read the release notes"}
+      ]
+    },
+    {
+      "path": "/about/", "purpose": "utility",
+      "title": "About this demonstration | Spiral Max SEO Test Lab",
+      "description": "What this educational test project does, what its observations mean, and why its pages are clearly labelled as examples.",
+      "heading": "A demonstration with visible limits",
+      "sections": [
+        {"paragraphs": ["Spiral Max SEO Test Lab is a small, public educational project for testing a cautious SEO control loop. It provides a website that can be crawled, rendered, described, and reviewed without placing an important commercial site at risk. All people, customers, credentials, reviews, addresses, and commercial success claims are intentionally absent.", "The subject is ordinary web publishing. Readers can use the guides without participating in an experiment or enabling analytics. Some material is intentionally incomplete or imperfect. That makes the site useful for checking whether a detector notices a condition, whether an analyst explains it correctly, and whether an executor respects its permissions."]},
+        {"heading": "What a result can show", "paragraphs": ["A successful structural test can show that the system detected a broken destination or preserved a page while preparing a proposal. It cannot show that a change would improve sales, that Google has indexed a URL, or that the same result will hold on an unrelated website.", "Changes should remain attributable to a version, an explanation, and a way to recover the previous state. An uncertain explanation can still support a small reversible experiment, while a confident observation may require no action at all. The practice event on this site is a test measurement, not a business outcome."]}
+      ]
+    },
+    {
+      "path": "/guides/", "purpose": "hub",
+      "title": "Web publishing guides | Spiral Max SEO Test Lab",
+      "description": "Browse a small collection of practical guides to page titles, summaries, navigation, status codes, accessibility, and release checks.",
+      "heading": "A guide for the next small decision",
+      "sections": [
+        {"paragraphs": ["Choose a guide that matches the decision in front of you. The collection moves from describing a page to connecting it, checking whether it can be discovered, and reviewing a release. Each destination has a specific purpose; reading every page is not a requirement.", "A web-publishing review starts with the intended reader. Ask what they need, which page should answer that need, and whether the address and navigation make that answer easy to reach. Technical observations are useful when they clarify those choices."]},
+        {"heading": "Read with a question", "paragraphs": ["For wording questions, begin with titles and summaries. For navigation questions, use the internal-links guide. For a missing or unexpectedly excluded page, inspect status codes, canonical URLs, crawl directives, and the sitemap together. A single signal rarely explains the entire situation.", "These pages are educational examples in a demonstration project. They are not a ranking formula. A concise page can be useful, an apparently unusual directive can be intentional, and changing a label without understanding its purpose may make a site worse. Use the checklists to record observations before proposing edits."]}
+      ],
+      "links": [
+        {"path": "/guides/descriptive-titles/", "label": "Descriptive titles"},
+        {"path": "/guides/useful-summaries/", "label": "Useful summaries"},
+        {"path": "/guides/internal-links/", "label": "Internal links"},
+        {"path": "/guides/status-codes/", "label": "Response status codes"},
+        {"path": "/guides/canonical-urls/", "label": "Canonical URLs"},
+        {"path": "/guides/crawl-directives/", "label": "Crawl directives"},
+        {"path": "/guides/sitemaps/", "label": "Sitemaps"},
+        {"path": "/guides/accessibility/", "label": "Accessibility basics"},
+        {"path": "/guides/page-checklist/", "label": "A reader's page checklist"},
+        {"path": "/guides/preflight-checklist/", "label": "A publisher's release checklist"},
+        {"path": "/guides/linked-resources/", "label": "Choosing linked resources"},
+        {"path": "/guides/url-preferences/", "label": "Recording address preferences"},
+        {"path": "/guides/crawl-eligibility/", "label": "Checking indexing eligibility"},
+        {"path": "/notes/navigation-draft/", "label": "Navigation planning note"},
+        {"path": "/notes/metadata-draft/", "label": "Metadata planning note"},
+        {"path": "/exercises/title-review/", "label": "Title review practice"},
+        {"path": "/exercises/title-audit/", "label": "Title audit practice"},
+        {"path": "/release-notes/", "label": "Project release notes"}
+      ]
+    },
+    {
+      "path": "/guides/descriptive-titles/", "purpose": "guide",
+      "title": "Write a descriptive page title | Spiral Max SEO Test Lab",
+      "description": "Choose wording that identifies a page's topic and purpose, then compare the browser title with what a reader actually finds.",
+      "heading": "Write a descriptive page title",
+      "sections": [
+        {"paragraphs": ["A page title helps someone recognise a destination before opening it. It also helps distinguish browser tabs after several pages are open. Start with the page's specific subject and the job it performs. A title such as 'Preparing a bicycle for winter storage' tells a reader more than 'Useful advice'.", "The title should match the substance of the page. Promising a complete procedure when the body contains only a brief note creates a gap between expectation and experience. Adding popular words cannot repair that gap. First decide whether the page meets its purpose, then describe it accurately."]},
+        {"heading": "A small writing process", "items": ["Write one sentence explaining the intended reader's question.", "Underline the subject and the action the page supports.", "Use those ideas in a natural, specific title.", "Add a short project or organisation name only when it helps recognition.", "Compare the result with other titles on the same site so that different pages remain distinguishable."]},
+        {"heading": "Check the result in context", "paragraphs": ["Read the title beside the visible heading and first paragraph. They do not have to use identical words, but they should set compatible expectations. Then inspect the actual browser tab, including a narrow viewport. Display space varies, so there is no single character count that guarantees a particular appearance everywhere. Keep the important identifying words early and remove phrases that add no meaning."]}
+      ],
+      "links": [{"path": "/guides/useful-summaries/", "label": "Describe the page in a useful summary"}]
+    },
+    {
+      "path": "/guides/useful-summaries/", "purpose": "guide",
+      "title": "Write a useful page summary | Spiral Max SEO Test Lab",
+      "description": "Summarise the actual information a page offers without exaggeration, repetition, or promises its content cannot support.",
+      "heading": "Describe the useful part first",
+      "sections": [
+        {"paragraphs": ["A short summary should help a reader decide whether opening a page is worth their attention. State the question the page answers, the kind of information it contains, and any important limit. Avoid listing every topic on the site. The summary belongs to one destination.", "For a guide to repairing a loose cupboard handle, a useful summary could mention identifying the fixing, tightening it, and checking whether the material is damaged. A vague promise of the 'ultimate solution for everyone' provides less information and is harder to justify. Specific language gives the reader a clearer basis for choosing."]},
+        {"heading": "Make the promise verifiable", "paragraphs": ["Compare each phrase with the body. If the summary mentions a checklist, the checklist should be present. If it promises a comparison, the page should explain the alternatives rather than simply name them. Remove numbers, credentials, and claimed results unless they are supported by evidence you can inspect.", "A metadata description is one possible source for a search snippet; it is not a command that every search interface must display verbatim. Evaluate whether your description is accurate and useful before interpreting changes in clicks. Query wording, competing results, and the search interface can also influence the observed response."]},
+        {"heading": "Use repetition selectively", "paragraphs": ["Shared project wording can provide context, but it should not replace the page-specific explanation. Two pages with different jobs usually deserve different summaries. When two summaries are identical, review the underlying pages before deciding whether to rewrite text or reconsider their separate purposes."]}
+      ],
+      "links": [{"path": "/guides/descriptive-titles/", "label": "Pair the summary with a descriptive title"}]
+    },
+    {
+      "path": "/guides/internal-links/", "purpose": "guide",
+      "title": "Connect pages with useful internal links | Spiral Max SEO Test Lab",
+      "description": "Choose internal destinations and link labels that help readers continue a task, and review the resulting navigation as a graph.",
+      "heading": "Make the next useful step easy to find",
+      "sections": [
+        {"paragraphs": ["An internal link connects two addresses on the same website. Its first job is to help a reader move to relevant information. Begin with the reader's next question: do they need a definition, a prerequisite, a worked example, or a way to complete the task? Link to the page that supplies that need.", "Use a label that explains the destination in the surrounding sentence. 'Check the storage instructions' provides more context than a repeated 'click here'. Avoid inserting links merely to increase a count. Many unrelated destinations can make a simple page harder to read and can obscure the route that matters most."]},
+        {"heading": "Review the connection", "items": ["Open the destination and confirm that it exists.", "Check that its content matches the label's promise.", "Consider whether the link belongs near the relevant explanation rather than in a disconnected list.", "Inspect the keyboard focus and visible link styling.", "Review whether another useful page has no incoming links at all."]},
+        {"heading": "Count sources, then interpret", "paragraphs": ["When analysing a small site, count distinct source pages as well as total links. Ten repeated footer links from one page are still only one source. A page with a single incoming source may be fragile if that source is later removed, but the count does not determine usefulness. A private utility, a temporary result, or an intentionally isolated exercise can have a valid reason for limited navigation. Establish intent before proposing a change."]}
+      ],
+      "links": [{"path": "/guides/sitemaps/", "label": "Compare navigation with a sitemap"}]
+    },
+    {
+      "path": "/guides/status-codes/", "purpose": "guide",
+      "title": "Read response status codes | Spiral Max SEO Test Lab",
+      "description": "Distinguish an available page, a redirect, and a missing destination by observing the server response rather than its appearance alone.",
+      "heading": "A page's response is part of its behaviour",
+      "sections": [
+        {"paragraphs": ["A browser asks a server for a resource, and the server returns a response status with the content. A successful response commonly uses 200. A missing resource commonly uses 404. A redirect uses a redirect status and a destination. These observations describe what happened during one request; they are not a complete explanation of why it happened.", "A friendly error screen can be helpful, but its appearance does not prove the server sent the correct status. If a nonexistent address returns a normal success response containing an error message, a crawler may receive a misleading signal. Check the response directly as well as looking at the rendered page."]},
+        {"heading": "Investigate a failed destination", "paragraphs": ["Record the source page, the link label, the requested address, and the observed status. Retry cautiously if the failure may be transient. If the address is genuinely obsolete, identify the intended replacement from site knowledge rather than guessing that every missing page should lead to the home page.", "A useful repair may be to update a link, restore an accidentally removed resource, or explain that the information is no longer available. Redirecting an unrelated page can frustrate readers. Preserve the reason for the change so someone reviewing it later can understand the intended connection."]},
+        {"heading": "Try a response check", "paragraphs": ["The example destination below lets you compare the address you requested with the response you receive. Use browser developer tools or an HTTP client to inspect it. The site deliberately includes imperfect examples, so treat the result as an observation to record."]}
+      ],
+      "links": [{"path": "/reference/missing-response-example/", "label": "Open the response-code example"}]
+    },
+    {
+      "path": "/guides/canonical-urls/", "purpose": "guide",
+      "title": "Understand a canonical URL declaration | Spiral Max SEO Test Lab",
+      "description": "Read a page's preferred-address declaration, compare it with the actual content, and distinguish that hint from a redirect or an indexing guarantee.",
+      "heading": "A preferred address needs a reason",
+      "sections": [
+        {"paragraphs": ["A canonical declaration identifies a preferred URL for a page or a group of equivalent pages. It is useful when several addresses expose substantially the same content. Reading the declaration tells you what the publisher requested; it does not prove which address a search engine selected.", "Compare the declaring page with its target. Does the target exist? Does it describe the same information? Is the address on the intended host and protocol? A declaration pointing to an unrelated article can create a conflict between the content, links, and stated preference. Treat that conflict as a reason to inspect publisher intent."]},
+        {"heading": "Keep related signals consistent", "paragraphs": ["Internal navigation and sitemaps should normally use the addresses that the publisher wants people and crawlers to find. Consistent choices make the site easier to reason about. A redirect, by contrast, moves a request to a different destination; a canonical declaration does not move the reader away from the current page.", "Before changing a preference, consider any legitimate duplicate variants, language versions, pagination, tracking parameters, or historical migrations. The correct decision depends on the site's actual organisation. A mechanically different URL is not automatically an error, and a self-referencing declaration is not proof that a page deserves indexing."]},
+        {"heading": "Record an observation", "paragraphs": ["Store the requested address, final address, canonical target, observation time, and relevant content comparison. Keep the distinction between the observed declaration and your conclusion about whether it is appropriate. That separation makes a later review or rollback much easier to justify."]}
+      ],
+      "links": [{"path": "/guides/crawl-directives/", "label": "Compare address preferences with indexing directives"}]
+    },
+    {
+      "path": "/guides/crawl-directives/", "purpose": "guide",
+      "title": "Distinguish crawling from indexing | Spiral Max SEO Test Lab",
+      "description": "Understand the different jobs of robots.txt and page-level indexing directives, including why permission is not proof of inclusion in search.",
+      "heading": "Access and inclusion are different questions",
+      "sections": [
+        {"paragraphs": ["Crawling is the process of requesting and reading resources. Indexing is a search engine's decision about storing and using information in its search system. Permission to crawl does not guarantee indexing, and a page that appears accessible in a browser may still carry a directive asking search engines not to index it.", "A robots.txt file describes crawling rules for cooperating crawlers. A page-level robots meta tag can communicate instructions such as noindex. These mechanisms operate at different points. If a crawler cannot retrieve a page, it may be unable to observe a directive contained inside that page."]},
+        {"heading": "Inspect the whole response", "paragraphs": ["Check the response status, relevant headers, HTML directives, and robots.txt rules together. Also record the page's intended role. An account screen, internal search result, or temporary preview may intentionally be excluded. A public guide intended to be discoverable may have inherited a directive from a staging environment.", "Do not infer actual search inclusion from a successful HTTP response or an index-permitting tag. Those observations establish eligibility signals, not the state of a search engine's index. A verified inspection result from the relevant search property supplies different evidence and can still have its own observation time and limitations."]},
+        {"heading": "Avoid broad fixes", "paragraphs": ["Changing a site-wide rule to repair one page can expose many unrelated addresses. Prefer identifying the narrow source of a directive, explaining the intended audience, and preparing a reversible change. Keep production permissions separate from the evidence-gathering step."]}
+      ],
+      "links": [{"path": "/guides/crawl-eligibility/", "label": "Use a page-level eligibility checklist"}]
+    },
+    {
+      "path": "/guides/sitemaps/", "purpose": "guide",
+      "title": "Inspect a small XML sitemap | Spiral Max SEO Test Lab",
+      "description": "Compare sitemap addresses with a release inventory and internal navigation without treating a sitemap as proof of indexing or a complete page list.",
+      "heading": "A sitemap is a useful list, with limits",
+      "sections": [
+        {"paragraphs": ["An XML sitemap lists addresses that a publisher wants a crawler to discover. It can help expose pages that are difficult to reach through ordinary links, but it does not replace useful navigation. Listing an address does not guarantee that a search engine will crawl or index it.", "For a small static site, compare three views: the files in a trusted release inventory, the addresses in the sitemap, and the destinations reachable through internal HTML links. Disagreements can reveal an omitted page, an outdated address, or a page with no incoming navigation. They can also reflect an intentional choice, so record the intended indexing role."]},
+        {"heading": "Make a careful comparison", "items": ["Check that each listed address uses the intended HTTPS origin.", "Request listed destinations and inspect their response statuses.", "Compare the list with index-eligible release pages.", "Review unexpected omissions in the context of page purpose.", "Keep an observation timestamp and the exact list used for the comparison."]},
+        {"heading": "Recognise incomplete evidence", "paragraphs": ["A crawl that stops at a page limit cannot establish that every page has been seen. Likewise, a sitemap can be incomplete or stale. To call a page orphaned, you need a sufficiently complete inventory and link graph rather than merely failing to discover it on a short crawl. Be explicit when coverage is unknown, and avoid reporting a confident absence from an incomplete sample."]}
+      ],
+      "links": [{"path": "/guides/internal-links/", "label": "Review the internal navigation alongside the sitemap"}]
+    },
+    {
+      "path": "/guides/accessibility/", "purpose": "guide",
+      "title": "Review basic page accessibility | Spiral Max SEO Test Lab",
+      "description": "Check headings, keyboard navigation, link labels, focus visibility, and form instructions as part of a small page review.",
+      "heading": "Make a page easier to operate",
+      "sections": [
+        {"paragraphs": ["A page is easier to use when its structure and controls communicate their purpose. Start with headings that describe the sections beneath them. Use real links for navigation and real buttons for actions. Consistent semantics help browsers and assistive technologies present the interface in useful ways.", "Move through the page using a keyboard. You should be able to see which control has focus, activate links and buttons, and reach the main content without traversing every repeated navigation item. A visible skip link can make that last step easier. Do not remove focus outlines unless an equally clear replacement is provided."]},
+        {"heading": "Check instructions and feedback", "paragraphs": ["A checkbox needs an associated label, not merely text placed nearby. A group of related controls benefits from a shared explanation. When an action becomes available only after prerequisites are complete, explain the prerequisites and make the resulting status understandable without relying on colour alone.", "Try the layout with a narrow viewport and larger text. Long labels should wrap, content should remain readable, and controls should not disappear behind clipped containers. These checks can find common problems, but a short checklist is not a complete accessibility audit or a claim of compliance with a particular standard."]},
+        {"heading": "Include people in evaluation", "paragraphs": ["Automated tools can inspect markup and detect some contrast or naming issues. They cannot fully determine whether instructions make sense or whether a task is practical for a particular reader. Combine deterministic checks with informed manual review, and record which checks were actually performed."]}
+      ],
+      "links": [{"path": "/exercises/", "label": "Try a labelled checklist with keyboard controls"}]
+    },
+    {
+      "path": "/guides/page-checklist/", "purpose": "guide",
+      "title": "A practical page checklist | Spiral Max SEO Test Lab",
+      "description": "A practical checklist for reviewing a small educational web page before sharing it.",
+      "heading": "Review a page through a reader's task",
+      "sections": [
+        {"paragraphs": ["Begin a page review by writing down the task the reader is trying to complete. The task might be choosing a storage method, understanding a definition, or following a short procedure. This establishes a useful reference point for the rest of the review. A page cannot be judged well by counting words without considering why those words are there.", "Read the heading and opening paragraph before looking at technical details. Can you tell what the page offers? Are important limits visible? If the introduction promises a worked example, check whether the example actually appears and helps the reader move from explanation to action."]},
+        {"heading": "Inspect the reading experience", "items": ["Check whether each section contributes to the stated task.", "Look for unexplained terms and provide definitions where needed.", "Distinguish supported facts from suggestions or uncertain interpretations.", "Follow contextual links and check that their destinations help.", "Read the page on a narrow screen and with a keyboard."]},
+        {"heading": "Choose the smallest useful response", "paragraphs": ["A review does not have to result in an edit. If the page already answers the intended question accurately and accessibly, keep it. If one sentence is unclear, revise that sentence before expanding the entire page. If crucial information is missing, identify what evidence or expertise would be needed to supply it. Record the reason for any proposed change so a later reviewer can assess its usefulness."]}
+      ],
+      "links": [{"path": "/guides/accessibility/", "label": "Include basic accessibility checks"}]
+    },
+    {
+      "path": "/guides/preflight-checklist/", "purpose": "guide",
+      "title": "A practical page checklist | Spiral Max SEO Test Lab",
+      "description": "A practical checklist for reviewing a small educational web page before sharing it.",
+      "heading": "Prepare a small website release",
+      "sections": [
+        {"paragraphs": ["A release review checks a set of files and configuration choices before they become the public version of a website. Start with an identifiable revision and a repeatable build. Save the previous release so that a problem can be investigated and, when appropriate, reversed without reconstructing files from memory.", "Confirm the destination environment before publishing. A test hostname, preview deployment, and established public site can have different permissions and analytics settings. Keep credentials outside generated static files. Public identifiers such as verification tags have a different role from secrets that authorise changes to an account."]},
+        {"heading": "Check the release package", "items": ["Inspect the intended origin in canonical tags and sitemap entries.", "Confirm that expected pages and assets exist in the build output.", "Test a missing address and check that the host returns an actual 404.", "Review security headers and any third-party requests.", "Compare the release inventory with the files being deployed.", "Keep a recoverable version of the preceding release."]},
+        {"heading": "Verify after publishing", "paragraphs": ["A successful upload proves only that an upload completed. Request the public pages, render important interactions, and compare content fingerprints with the release you intended to publish. Record the deployment identifier and the results of those checks. If a discrepancy appears, pause further changes and determine whether the problem lies in the build, host configuration, cache, or another process before choosing a recovery action."]}
+      ],
+      "links": [{"path": "/guides/status-codes/", "label": "Include a genuine missing-page response check"}]
+    },
+    {
+      "path": "/guides/linked-resources/", "purpose": "guide",
+      "title": "Choose a useful supporting resource | Spiral Max SEO Test Lab",
+      "description": "Evaluate whether a linked resource supplies the evidence, explanation, or next step a reader needs before adding it to a page.",
+      "heading": "Give each supporting resource a job",
+      "sections": [
+        {"paragraphs": ["A supporting resource can provide evidence, explain a prerequisite, or demonstrate a procedure in more detail. Decide which job it performs before adding a link. This helps prevent a useful guide from becoming a long, unfocused list of destinations that readers must evaluate on their own.", "Open the resource and inspect the relevant passage. A title that sounds appropriate is not enough. Check whether the page is available, whether the information matches the claim you want to support, and whether its context changes the meaning. If the information is time-sensitive, record the date of the observation and any applicable version."]},
+        {"heading": "Make the connection explicit", "paragraphs": ["Place a resource near the sentence or task it supports. A label such as 'Read the material storage instructions' tells the reader why the destination matters. Avoid suggesting that a reference proves more than it actually says. When the destination only offers one perspective or a preliminary observation, describe that limitation.", "Maintain resources as the source material changes. A broken address may need a replacement, but a working address can also become misleading if its content is rewritten. Review important references when the surrounding guide changes, and keep evidence for decisions that depend on them."]},
+        {"heading": "Keep the route visible", "paragraphs": ["A supporting page can be valuable even when it is short or specialised. Make sure readers who need it have a sensible way to discover it from the main task. Navigation should reflect the relationship between pages instead of relying on a reader already knowing the exact address."]}
+      ],
+      "links": [{"path": "/guides/internal-links/", "label": "Review how a resource fits the internal link graph"}]
+    },
+    {
+      "path": "/guides/url-preferences/", "purpose": "guide",
+      "title": "Keep an address preference record | Spiral Max SEO Test Lab",
+      "description": "Record which public address should represent a page, why that choice was made, and which evidence would justify changing it.",
+      "heading": "Write down the intended address",
+      "canonical_path": "/guides/canonical-urls/",
+      "sections": [
+        {"paragraphs": ["An address preference record explains the publisher's intention for one piece of content. It connects an internal page identity to the public URL that should represent it. This is useful when several systems can influence addresses, including a content editor, a routing layer, and a deployment configuration.", "Start with the page's purpose and current address. Record whether it should be publicly discoverable, whether equivalent variants exist, and which variant should be preferred. A short explanation is more useful than a bare setting because it lets a future reviewer distinguish a deliberate choice from an inherited default."]},
+        {"heading": "Preserve the reason", "paragraphs": ["Include the observation that motivated a change, the person or process responsible, and the previous value. If a parameter variant is equivalent, describe that equivalence. If an old address has been replaced, explain how the new destination meets the same reader need. Do not infer equivalence merely because two paths contain similar words.", "Compare the record with the published page periodically. The canonical tag, internal links, sitemap, and redirects may drift when templates or content move. A disagreement identifies something to inspect; it does not tell an automated executor which setting is authoritative without additional evidence."]},
+        {"heading": "Make recovery possible", "paragraphs": ["Before applying a preference change, identify the bounded edit that would restore the previous state and the checks needed to confirm it worked. Address changes can affect other pages, so recovery should account for links and redirects as well as the one field being edited."]}
+      ]
+    },
+    {
+      "path": "/guides/crawl-eligibility/", "purpose": "guide",
+      "title": "Check a page's indexing eligibility | Spiral Max SEO Test Lab",
+      "description": "Use a page-level checklist to compare HTTP availability, crawl permission, indexing directives, and the publisher's intended audience.",
+      "heading": "Check permission before inferring inclusion",
+      "robots": "noindex, follow",
+      "sections": [
+        {"paragraphs": ["An eligibility check asks whether the observed technical signals permit a page to be considered for indexing. It is a narrower question than whether a search engine has indexed the page. Keeping that boundary clear prevents an ordinary crawl from being reported as an authoritative index inspection.", "Begin with the exact requested URL. Record the final address after any redirects, the response status, and the time of the request. A missing page and a successful page containing a noindex instruction require different explanations. Check the applicable robots.txt rules, but do not assume that a rule granting access also requests inclusion in search."]},
+        {"heading": "Compare signals with intent", "items": ["Identify the intended audience and whether the publisher wants search discovery.", "Inspect page-level meta directives and relevant response headers.", "Record the declared canonical target and confirm the target's purpose.", "Look for staging settings that may have reached the public release.", "Use verified property data separately when actual index status is needed."]},
+        {"heading": "Choose a proportionate next step", "paragraphs": ["If a directive conflicts with the intended role, prepare a narrow proposal that states both the observation and the evidence of intent. Avoid changing broad site rules simply because one public page appears excluded. If intent is uncertain, retain the observation and ask for authoritative clarification before making a change. A page can be technically eligible and still provide too little value to deserve an edit aimed at attracting more visitors."]}
+      ]
+    },
+    {
+      "path": "/notes/navigation-draft/", "purpose": "note",
+      "title": "Navigation planning note | Spiral Max SEO Test Lab",
+      "description": "An incomplete navigation planning note in this educational demonstration.",
+      "heading": "Plan a navigation review",
+      "sections": [{"paragraphs": ["Navigation should help readers find things. More details about planning the review will be added here."]}]
+    },
+    {
+      "path": "/notes/metadata-draft/", "purpose": "note",
+      "title": "Metadata planning note | Spiral Max SEO Test Lab",
+      "description": "An incomplete metadata planning note in this educational demonstration.",
+      "heading": "Plan a metadata review",
+      "sections": [{"paragraphs": ["Metadata describes a page. A detailed method for reviewing it has not yet been written for this note."]}]
+    },
+    {
+      "path": "/exercises/title-review/", "purpose": "exercise",
+      "title": "Practice a page title review | Spiral Max SEO Test Lab",
+      "description": "A practice task for comparing a browser title with a page's heading, opening explanation, and reader need.",
+      "heading": "Practice reviewing a page title",
+      "sections": [
+        {"paragraphs": ["Choose one guide in this lab and write down the browser title before reading the body. Predict the question that the page will answer. Then open the page and compare your prediction with the visible heading and the first two paragraphs. Keep the original wording in your notes so that you can distinguish observation from interpretation.", "Identify the subject of the page and the action it helps a reader complete. Check whether both ideas are represented in the title. If the title promises a complete method, look for the steps and limitations that would make that promise accurate. Do not add an impressive phrase merely because it sounds persuasive."]},
+        {"heading": "Compare two possible wordings", "paragraphs": ["Draft a second version that describes the same actual content. Keep the subject specific and remove repeated project wording if it hides the useful information. Compare the two versions beside the page heading. Explain which expectation each version creates and whether the body satisfies that expectation.", "Finish by choosing keep, revise, or gather more evidence. Keeping the original is a valid result when it is already clear and accurate. A proposed revision should name the reader benefit and the smallest wording change needed to provide it. This practice task produces no ranking prediction and does not require sending personal information."]},
+        {"heading": "Record your reasoning", "paragraphs": ["Use the page-review checklist to record that you compared the title, checked a destination, and considered the page's purpose. Completing the interaction is a demonstration event, not proof that your wording would improve an actual business outcome."]}
+      ],
+      "links": [{"path": "/exercises/", "label": "Record a practice completion"}]
+    },
+    {
+      "path": "/exercises/title-audit/", "purpose": "exercise",
+      "title": "Practice a page title audit | Spiral Max SEO Test Lab",
+      "description": "An exercise in auditing the relationship between a browser title, page content, and the expectation it creates for a reader.",
+      "heading": "Practice auditing a page title",
+      "sections": [
+        {"paragraphs": ["Choose one guide in this lab and write down the browser title before reading the body. Predict the question that the page will answer. Then open the page and compare your prediction with the visible heading and the first two paragraphs. Keep the original wording in your notes so that you can distinguish observation from interpretation.", "Identify the subject of the page and the action it helps a reader complete. Check whether both ideas are represented in the title. If the title promises a complete method, look for the steps and limitations that would make that promise accurate. Do not add an impressive phrase merely because it sounds persuasive."]},
+        {"heading": "Compare two possible wordings", "paragraphs": ["Draft a second version that describes the same actual content. Keep the subject specific and remove repeated project wording if it hides the useful information. Compare the two versions beside the page heading. Explain which expectation each version creates and whether the body satisfies that expectation.", "Finish by choosing keep, revise, or gather more evidence. Keeping the original is a valid result when it is already clear and accurate. A proposed revision should name the reader benefit and the smallest wording change needed to provide it. This practice task produces no ranking prediction and does not require sending personal information."]},
+        {"heading": "Keep an audit note", "paragraphs": ["Use the page-review checklist to record that you compared the title, checked a destination, and considered the page's purpose. Completing the interaction is a demonstration event, not proof that your wording would improve an actual business outcome."]}
+      ],
+      "links": [{"path": "/exercises/", "label": "Record the practice result"}]
+    },
+    {
+      "path": "/exercises/", "purpose": "exercise",
+      "title": "Try a three-step page review | Spiral Max SEO Test Lab",
+      "description": "Practice checking a page title, an internal destination, and the page's purpose with a local, accessible three-step checklist.",
+      "heading": "Try a careful page review",
+      "interactive": "checklist",
+      "sections": [{"paragraphs": ["Open any guide, make the three observations below, and record a practice completion. The checklist works without an account. It does not ask for a name, email address, payment, or written response.", "If a separate test analytics property is configured, you may explicitly allow test analytics using the control in the footer. Otherwise the result stays in this page. A completion represents practice, not a commercial conversion."]}],
+      "links": [{"path": "/guides/descriptive-titles/", "label": "Choose the descriptive-title guide"}, {"path": "/guides/accessibility/", "label": "Choose the accessibility guide"}]
+    },
+    {
+      "path": "/reference/response-headers/", "purpose": "reference",
+      "title": "Response header reading notes | Spiral Max SEO Test Lab",
+      "description": "A compact reference for recording response headers, distinguishing them from HTML content, and preserving the context of an HTTP observation.",
+      "heading": "Read the response around the document",
+      "sections": [
+        {"paragraphs": ["HTTP response headers accompany a resource but are not part of the page's visible prose. They can describe the content type, cache handling, and other behaviour. A browser's network panel or an HTTP client can show these fields alongside the response status and body.", "Record the exact request address and any redirects before interpreting a header. A redirect response and the final document may contain different fields. A cached response may also differ from a fresh request. Without that context, two observations can appear contradictory even when each accurately describes a different response."]},
+        {"heading": "Keep evidence small and useful", "paragraphs": ["Store the fields relevant to the question being investigated rather than copying every byte into an agent prompt. Avoid retaining authentication material or unrelated personal data. Separate the observed value from the conclusion you draw from it, and attach the observation time and source URL.", "Header names are case-insensitive, so a comparison should not treat capitalisation alone as a behavioural difference. Repeated fields need careful handling because their meaning depends on the particular header. Use a maintained HTTP parser instead of inventing a general splitting rule for every field."]},
+        {"heading": "Compare with the rendered page", "paragraphs": ["A response can be technically successful while its document is unhelpful, and a visually friendly error page can still carry a missing-resource status. Review the response and the rendered experience together when deciding whether a link or page behaviour needs attention."]}
+      ]
+    },
+    {
+      "path": "/reference/link-labels/", "purpose": "reference",
+      "title": "Link label reading notes | Spiral Max SEO Test Lab",
+      "description": "A reference for reviewing whether link text explains a destination and remains useful when read in different navigation contexts.",
+      "heading": "Let a label explain the destination",
+      "sections": [
+        {"paragraphs": ["A link label should help a reader understand where the link leads or what information the destination provides. The surrounding sentence can supply context, but a long list of identical labels makes it harder to distinguish different destinations. Prefer wording that identifies the relevant topic or task.", "Read the label before opening the destination, and write down the expectation it creates. Then inspect the destination. If a link says 'download the checklist', the reader should not arrive at an unrelated introduction with no checklist. Accurate labels reduce the effort needed to decide which path is useful."]},
+        {"heading": "Review repeated navigation", "paragraphs": ["Shared navigation benefits from stable, recognisable labels. A page-specific contextual link can be more descriptive because it sits beside the explanation that makes the destination relevant. Both forms can be useful; neither should be added simply to meet a numerical link target.", "Consider keyboard and assistive-technology use as well as visual appearance. A link must be distinguishable from ordinary text, show visible focus, and provide an accessible name. An icon without explanatory text may need an appropriate label, but avoid duplicating information in a way that makes every control unnecessarily verbose."]},
+        {"heading": "Preserve a clear relationship", "paragraphs": ["When a destination changes, review its label as well as the URL. A working address can still mislead if the old wording promises information that is no longer present. Keep the label, surrounding explanation, and destination aligned with the task the reader is trying to complete."]}
+      ]
+    },
+    {
+      "path": "/glossary/", "purpose": "reference",
+      "title": "A small web publishing glossary | Spiral Max SEO Test Lab",
+      "description": "Plain-language definitions of crawling, indexing, canonical URLs, internal links, metadata, and reversible changes used in this demonstration.",
+      "heading": "Words used around the lab",
+      "sections": [
+        {"heading": "Crawl", "paragraphs": ["A process that requests resources and follows discoverable addresses. A crawler sees only the material it successfully retrieves within its rules and limits. A stopped or blocked crawl is not a complete inventory."]},
+        {"heading": "Index", "paragraphs": ["A search system's stored representation of information it may use to answer queries. A successful request or an index-permitting directive does not prove that a particular search engine has included a page."]},
+        {"heading": "Canonical URL", "paragraphs": ["An address declared or selected as the preferred representation of a page or equivalent group of pages. The publisher's declaration and a search engine's selection are related but distinct observations."]},
+        {"heading": "Internal link", "paragraphs": ["A link from one page to another address on the same website. Its usefulness depends on the relationship between the source, label, destination, and reader's task, not simply on the number of links."]},
+        {"heading": "Metadata", "paragraphs": ["Information that describes a resource, such as its title or a short description. Metadata should accurately represent the resource rather than promise unsupported benefits or substitute for useful content."]},
+        {"heading": "Rollback", "paragraphs": ["A bounded operation that restores an earlier state after a change. A dependable rollback requires a known previous version and verification that the restoration actually occurred. Restoring a file does not automatically reverse every external effect."]}
+      ]
+    },
+    {
+      "path": "/privacy/", "purpose": "utility",
+      "title": "Privacy and optional test analytics | Spiral Max SEO Test Lab",
+      "description": "Read how this demonstration handles its local checklist and optional, consent-based analytics in a separate test property.",
+      "heading": "Privacy and test analytics",
+      "sections": [
+        {"paragraphs": ["Analytics is off without consent. This checklist requests no personal details.", "Opting in loads Google and queues a page view; completing the checklist queues lab_checklist_complete, with no monetary value.", "Google and hosting process network information; Google may set cookies. Sent URLs omit queries/fragments; referrers omit paths. Consent resets on reload. Delivery remains unverified. Only connect a separate test property with enhanced measurement disabled."]}]
+    },
+    {
+      "path": "/release-notes/", "purpose": "reference", "in_sitemap": false,
+      "title": "Project release notes | Spiral Max SEO Test Lab",
+      "description": "Describe the scope of this small educational release and the evidence needed to distinguish a built package from a verified public deployment.",
+      "heading": "What this release contains",
+      "sections": [
+        {"paragraphs": ["This edition contains a small collection of web-publishing guides, reference notes, a glossary, and an interactive review checklist. Every page identifies the site as a demonstration. No page presents invented customers, reviews, professional credentials, addresses, or commercial results.", "The static release is generated from versioned source content and assets. A separate inventory records each published page path, its intended indexing role, its general purpose, and the hash of its generated document. That inventory describes a release package; it does not certify how a hosting platform or search engine later handles the package."]},
+        {"heading": "Keep verification claims separate", "paragraphs": ["A build check can verify that files were produced consistently. An HTTP check can verify the public response at a particular time. A rendered-browser check can verify a specific interaction and layout. Search property and analytics checks supply other evidence. Each result should be recorded at its own boundary rather than combined into an unsupported claim that everything is connected.", "This demonstration also supports cautious recovery practice. Before a controlled edit, preserve the earlier artifact, identify the changed page, and define what would count as a successful restoration. After restoring it, request the public address and compare the result with the preserved content. A local restoration exercise should be labelled local until the public deployment has also been observed."]}
+      ]
+    }
+  ]
+}
