@@ -1,32 +1,23 @@
 {
-  "checked_at": "2026-09-01T22:47:56.921493+00:00",
+  "checked_at": "2026-09-01T23:42:06.157616+00:00",
   "tests": 633,
   "failures": 0,
   "errors": 0,
-  "skipped": 2,
-  "duration_seconds": 18.632,
-  "passed": 631,
-  "skipped_gates": [
-    {
-      "test": "test_postgresql_live_migration_audit_and_leases",
-      "reason": "Live Postgres gate requires TEST_POSTGRES_URL"
-    },
-    {
-      "test": "test_postgres_runtime_role_cannot_control_schema_or_immutable_records",
-      "reason": "Actual PostgreSQL role gate requires TEST_POSTGRES_URL"
-    }
-  ],
+  "skipped": 0,
+  "duration_seconds": 33.93,
+  "passed": 633,
+  "skipped_gates": [],
   "ruff": "passed",
   "javascript_syntax": "passed",
   "sqlite_migration_drift": "none",
   "actual_mcp_stdio": "passed",
   "mcp_tools": 37,
-  "real_provider_calls": 0,
+  "real_provider_calls": null,
   "production_mutations": 0,
   "real_seo_impact": "unmeasured",
-  "postgres_container_execution": "not_available_locally",
-  "browser_rendering": "26-page release home DOM verified on actual Pages preview; complete public browser gate pending",
-  "ci_execution": "pending_canonical_source_PR",
+  "postgres_container_execution": "passed with actual PostgreSQL 17.11 and Docker/Compose in disposable CI; durable host unconnected",
+  "browser_rendering": "dashboard and 26-page local/public lab gates passed; desktop/mobile, test interaction and real 404",
+  "ci_execution": "passed",
   "mutation_scope": "autonomous executor only; manual sandbox Git deployment operations are separately audited",
   "test_lab": {
     "pages": 26,
@@ -40,10 +31,53 @@
       "source": "frozen canonical packet reassessed by corrected independent evaluator"
     },
     "artifact_rollback": "passed; every tracked byte restored",
-    "public_url": "https://seo-test-lab.pages.dev",
-    "site_pr": "https://github.com/DARKLORDVINAY/seo-test-lab/pull/1",
-    "public_benchmark": "pending",
-    "public_rollback": "pending",
+    "public_url": "https://seo-test-lab.pages.dev/",
+    "public_benchmark": {
+      "true_positives": 13,
+      "false_positives": 0,
+      "false_negatives": 0,
+      "precision": 1,
+      "recall": 1,
+      "correct_no_action": 13,
+      "false_no_action": 0,
+      "coverage_complete": true,
+      "high_critical_intercepted": true,
+      "zero_autonomous_production_changes": true,
+      "structural_benchmark_passed": true,
+      "level_2_eligible": false,
+      "live_model_executed": false
+    },
+    "public_rollback": {
+      "status": "publicly_verified",
+      "baseline_commit": "424def79b9865afbd06940dc97380a9db0abf7e7",
+      "temporary_commit": "06d6d493f627c1db42bc6d5afa74696660945739",
+      "restored_commit": "2bdf8343b68823d323c5a30877c2a51c86e16810",
+      "baseline_and_restored_tree": "962816b3497c193b0d161dfc60e301a92e80fabc",
+      "baseline_manifest_sha256": "9b75ff958a5fd675efbe263b5e0dd91d6949759c5308169b03207cc6dc852c27",
+      "temporary_manifest_sha256": "219df6d350fcbd3d011bf3d284ed07151f9e8d8def19e9026b2fb08fe2c4ddc3",
+      "changed_paths": [
+        "guides/descriptive-titles/index.html",
+        "inventory.json"
+      ],
+      "reviewer": "independent public_rollback_verifier",
+      "restoration_pr": "https://github.com/DARKLORDVINAY/seo-test-lab/pull/3",
+      "scope": "All 26 HTML hashes and observed directives matched baseline; rendered behaviour/404 passed; full tracked Git tree matched A. Non-HTML asset bytes were not individually downloaded and hashed.",
+      "autonomous": false,
+      "commercial_effect": null
+    },
     "level_2_eligible": false
+  },
+  "test_execution_source": "https://github.com/DARKLORDVINAY/seo-autonomous/actions/runs/33568223519",
+  "verified_provider_scope": {
+    "public_https_crawl": true,
+    "gsc_api": false,
+    "ga4_api": false,
+    "live_model": false,
+    "paid_serp": false
+  },
+  "local_prior_checkpoint": {
+    "passed": 631,
+    "skipped": 2,
+    "reason": "PostgreSQL unavailable locally; the same tests passed on actual CI PostgreSQL"
   }
 }

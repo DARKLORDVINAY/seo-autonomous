@@ -1,0 +1,442 @@
+{
+  "schema_version": 1,
+  "checked_at": "2026-09-01T23:42:06.157616+00:00",
+  "objective": "Verify a controlled structural SEO laboratory; lab interactions have no commercial conversion value",
+  "public_url": "https://seo-test-lab.pages.dev/",
+  "site_repository": "DARKLORDVINAY/seo-test-lab",
+  "source_repository": "DARKLORDVINAY/seo-autonomous",
+  "pages": 26,
+  "ground_truth": {
+    "path": "test_lab/ground_truth.json",
+    "sha256": "924d52d55671481cd51ea37ead6ef36d46dc7bd99c113c77c156be83d1a1418d",
+    "expected_issue_units": 13,
+    "clean_control_pages": 13,
+    "scope": "Development structural benchmark; labels are runtime-isolated but publicly inspectable, not a blind holdout"
+  },
+  "metrics": {
+    "true_positives": 13,
+    "false_positives": 0,
+    "false_negatives": 0,
+    "precision": 1,
+    "recall": 1,
+    "correct_no_action": 13,
+    "false_no_action": 0,
+    "coverage_complete": true,
+    "high_critical_intercepted": true,
+    "zero_autonomous_production_changes": true,
+    "structural_benchmark_passed": true,
+    "level_2_eligible": false,
+    "live_model_executed": false
+  },
+  "risk_previews": [
+    {
+      "kind": "broken_internal_link",
+      "candidate_mutation": "add_internal_link",
+      "mutation_risk": "MEDIUM",
+      "allowed": false
+    },
+    {
+      "kind": "sitemap_unknown_page",
+      "candidate_mutation": "deploy_code",
+      "mutation_risk": "CRITICAL",
+      "allowed": false
+    },
+    {
+      "kind": "duplicate_meta_description",
+      "candidate_mutation": "update_meta_description",
+      "mutation_risk": "MEDIUM",
+      "allowed": false
+    },
+    {
+      "kind": "duplicate_title",
+      "candidate_mutation": "update_title",
+      "mutation_risk": "MEDIUM",
+      "allowed": false
+    },
+    {
+      "kind": "orphan_page",
+      "candidate_mutation": "add_internal_link",
+      "mutation_risk": "MEDIUM",
+      "allowed": false
+    },
+    {
+      "kind": "orphan_page",
+      "candidate_mutation": "add_internal_link",
+      "mutation_risk": "MEDIUM",
+      "allowed": false
+    },
+    {
+      "kind": "sitemap_missing_page",
+      "candidate_mutation": "deploy_code",
+      "mutation_risk": "CRITICAL",
+      "allowed": false
+    },
+    {
+      "kind": "weak_internal_links",
+      "candidate_mutation": "add_internal_link",
+      "mutation_risk": "MEDIUM",
+      "allowed": false
+    },
+    {
+      "kind": "thin_content",
+      "candidate_mutation": "update_existing_copy",
+      "mutation_risk": "MEDIUM",
+      "allowed": false
+    },
+    {
+      "kind": "thin_content",
+      "candidate_mutation": "update_existing_copy",
+      "mutation_risk": "MEDIUM",
+      "allowed": false
+    },
+    {
+      "kind": "potential_topic_overlap",
+      "candidate_mutation": "update_existing_copy",
+      "mutation_risk": "MEDIUM",
+      "allowed": false
+    },
+    {
+      "kind": "accidental_noindex",
+      "candidate_mutation": "change_robots",
+      "mutation_risk": "CRITICAL",
+      "allowed": false
+    },
+    {
+      "kind": "canonical_mismatch",
+      "candidate_mutation": "change_canonical",
+      "mutation_risk": "HIGH",
+      "allowed": false
+    }
+  ],
+  "candidate_risk_counts": {
+    "MEDIUM": 9,
+    "CRITICAL": 3,
+    "HIGH": 1
+  },
+  "public_runs": [
+    {
+      "phase": "baseline_a",
+      "run_id": 33569077349,
+      "job_id": 100058831164,
+      "url": "https://github.com/DARKLORDVINAY/seo-autonomous/actions/runs/33569077349",
+      "conclusion": "success",
+      "site_commit": "424def79b9865afbd06940dc97380a9db0abf7e7",
+      "pages_deployment": "9275b651-13aa-4bb8-99b5-ce3c85125b29",
+      "benchmark": {
+        "logged_at": "2026-09-01T23:02:35.3945165Z",
+        "site_id": "e38344e9-947c-4d29-ba3e-41374796a5d3",
+        "mode": "public",
+        "is_fixture": false,
+        "autonomy_level": 1,
+        "production_enabled": false,
+        "job_id": "6d92ba5c-7d2d-4fb6-b20b-ea8298126ac6",
+        "precision": 1,
+        "recall": 1,
+        "false_positives": 0,
+        "false_negatives": 0,
+        "structural_benchmark_passed": true,
+        "level_2_eligible": false
+      },
+      "browser": {
+        "logged_at": "2026-09-01T23:03:17.2990524Z",
+        "status": "passed",
+        "scope": "public_render",
+        "base_url": "https://seo-test-lab.pages.dev",
+        "pages_verified": 26,
+        "practice_event": "lab_checklist_complete",
+        "analytics_receipt_verified": false,
+        "unexpected_external_requests": 0,
+        "script_errors": 0,
+        "real_404": true,
+        "production_writes": 0,
+        "checked_at": "2026-09-01T23:03:17.298Z"
+      },
+      "artifact": {
+        "id": 9824293270,
+        "digest": "sha256:7b8cec311a0ad4e809e4bd9b3aabd7a8ea9433a2bf0e5ef9f5c4de62acdcdae2",
+        "expires_at": "2026-09-15"
+      }
+    },
+    {
+      "phase": "temporary_b",
+      "run_id": 33570806358,
+      "job_id": 100064127435,
+      "url": "https://github.com/DARKLORDVINAY/seo-autonomous/actions/runs/33570806358",
+      "conclusion": "success",
+      "site_commit": "06d6d493f627c1db42bc6d5afa74696660945739",
+      "pages_deployment": "339d5a0c-8d80-4092-9334-2454583af9a1",
+      "benchmark": {
+        "logged_at": "2026-09-01T23:24:42.2895243Z",
+        "site_id": "309a7465-3559-4f08-80f2-43589a35c11a",
+        "mode": "public",
+        "is_fixture": false,
+        "autonomy_level": 1,
+        "production_enabled": false,
+        "job_id": "8b8de376-c124-4513-a97e-a18908a673fc",
+        "precision": 1,
+        "recall": 1,
+        "false_positives": 0,
+        "false_negatives": 0,
+        "structural_benchmark_passed": true,
+        "level_2_eligible": false,
+        "true_positives": 13,
+        "correct_no_action": 13,
+        "false_no_action": 0,
+        "coverage_complete": true,
+        "high_critical_intercepted": true,
+        "zero_autonomous_production_changes": true,
+        "manifest_sha256": "219df6d350fcbd3d011bf3d284ed07151f9e8d8def19e9026b2fb08fe2c4ddc3",
+        "decision_packet_sha256": "f0774f96df24612d5ff1838bd77abde21eec9a942413bdd91104f626017666c7",
+        "live_model_executed": false
+      },
+      "browser": {
+        "logged_at": "2026-09-01T23:25:25.7307560Z",
+        "status": "passed",
+        "scope": "public_render",
+        "base_url": "https://seo-test-lab.pages.dev",
+        "pages_verified": 26,
+        "practice_event": "lab_checklist_complete",
+        "analytics_receipt_verified": false,
+        "unexpected_external_requests": 0,
+        "script_errors": 0,
+        "real_404": true,
+        "production_writes": 0,
+        "checked_at": "2026-09-01T23:25:25.730Z"
+      },
+      "artifact": [
+        {
+          "archive_download_url": "https://api.github.com/repos/DARKLORDVINAY/seo-autonomous/actions/artifacts/9824889307/zip",
+          "created_at": "2026-09-01T23:25:26Z",
+          "digest": "sha256:bb6cbf8ce15e75ca31485e1c2a45fd2ef9eb6a99f8fb96c2d5d9bfc8ca6bda24",
+          "expired": false,
+          "expires_at": "2026-09-15T23:25:25Z",
+          "id": 9824889307,
+          "name": "public-test-lab-evidence",
+          "size_in_bytes": 506366,
+          "updated_at": "2026-09-01T23:25:26Z",
+          "url": "https://api.github.com/repos/DARKLORDVINAY/seo-autonomous/actions/artifacts/9824889307",
+          "workflow_run": {
+            "head_branch": "verify/public-lab-20260901-b",
+            "head_repository_id": 1353936388,
+            "head_sha": "13e713a10b2ff7f0de306120e0cb82e3c305bf13",
+            "id": 33570806358,
+            "repository_id": 1353936388
+          }
+        }
+      ]
+    },
+    {
+      "phase": "restored_a",
+      "run_id": 33571682933,
+      "job_id": 100066797866,
+      "url": "https://github.com/DARKLORDVINAY/seo-autonomous/actions/runs/33571682933",
+      "conclusion": "success",
+      "site_commit": "2bdf8343b68823d323c5a30877c2a51c86e16810",
+      "pages_deployment": "552a409d-0ba9-4646-9ed7-bdf0b6aba387",
+      "benchmark": {
+        "logged_at": "2026-09-01T23:36:26.7276218Z",
+        "site_id": "27412950-59d6-49ce-8302-842c836328f1",
+        "mode": "public",
+        "is_fixture": false,
+        "autonomy_level": 1,
+        "production_enabled": false,
+        "job_id": "2d453a97-432e-43d9-b9cb-0cb4e8899063",
+        "precision": 1,
+        "recall": 1,
+        "false_positives": 0,
+        "false_negatives": 0,
+        "structural_benchmark_passed": true,
+        "level_2_eligible": false,
+        "true_positives": 13,
+        "correct_no_action": 13,
+        "false_no_action": 0,
+        "coverage_complete": true,
+        "high_critical_intercepted": true,
+        "zero_autonomous_production_changes": true,
+        "manifest_sha256": "9b75ff958a5fd675efbe263b5e0dd91d6949759c5308169b03207cc6dc852c27",
+        "decision_packet_sha256": "0973233d4a078ea3536c03f4e047a0bbb68c5fb36e20ef30403726bb7ad14b7f",
+        "live_model_executed": false
+      },
+      "browser": {
+        "logged_at": "2026-09-01T23:37:11.6443545Z",
+        "status": "passed",
+        "scope": "public_render",
+        "base_url": "https://seo-test-lab.pages.dev",
+        "pages_verified": 26,
+        "practice_event": "lab_checklist_complete",
+        "analytics_receipt_verified": false,
+        "unexpected_external_requests": 0,
+        "script_errors": 0,
+        "real_404": true,
+        "production_writes": 0,
+        "checked_at": "2026-09-01T23:37:11.643Z"
+      },
+      "artifact": [
+        {
+          "archive_download_url": "https://api.github.com/repos/DARKLORDVINAY/seo-autonomous/actions/artifacts/9825192936/zip",
+          "created_at": "2026-09-01T23:37:12Z",
+          "digest": "sha256:8640948b887f726f871261fba839dd329b7d865c404b8fb53439ea56b2fcf74d",
+          "expired": false,
+          "expires_at": "2026-09-15T23:37:12Z",
+          "id": 9825192936,
+          "name": "public-test-lab-evidence",
+          "size_in_bytes": 506337,
+          "updated_at": "2026-09-01T23:37:12Z",
+          "url": "https://api.github.com/repos/DARKLORDVINAY/seo-autonomous/actions/artifacts/9825192936",
+          "workflow_run": {
+            "head_branch": "verify/public-lab-20260901-restored",
+            "head_repository_id": 1353936388,
+            "head_sha": "2f906dfa23b83a459835c5984cd8822bd8c6909c",
+            "id": 33571682933,
+            "repository_id": 1353936388
+          }
+        }
+      ]
+    }
+  ],
+  "foundation_ci": {
+    "run_id": 33568223519,
+    "job_id": 100056183910,
+    "conclusion": "success",
+    "branch_commit": "2e4377cf0a5d9952ffe5ba74de6afd0879806212",
+    "tested_tree": "c4c229c7424a2e544b48a3409d571a507146c5f9",
+    "tests": {
+      "passed": 633,
+      "skipped": 0,
+      "failures": 0,
+      "summary": "2026-09-01T22:51:44.9562426Z 633 passed, 1 warning in 33.93s"
+    },
+    "fixture_benchmark": {
+      "logged_at": "2026-09-01T22:51:48.0844928Z",
+      "site_id": "8d28e739-0674-485b-9ec4-5e5c1d98d67d",
+      "mode": "artifact",
+      "is_fixture": true,
+      "autonomy_level": 1,
+      "production_enabled": false,
+      "database_url": "***127.0.0.1:5432/seo_ci",
+      "build_dir": "/home/runner/work/seo-autonomous/seo-autonomous/artifacts/test-lab-site",
+      "report": "/home/runner/work/seo-autonomous/seo-autonomous/artifacts/test-lab-report.json",
+      "job_id": "2fdf9306-b310-4388-a3e4-8d49e18c8246",
+      "precision": 1,
+      "recall": 1,
+      "false_positives": 0,
+      "false_negatives": 0,
+      "structural_benchmark_passed": true,
+      "level_2_eligible": false
+    },
+    "render": {
+      "logged_at": "2026-09-01T22:53:18.7112379Z",
+      "status": "passed",
+      "scope": "local_http_render",
+      "base_url": "http://127.0.0.1:42559",
+      "pages_verified": 26,
+      "practice_event": "lab_checklist_complete",
+      "analytics_receipt_verified": false,
+      "unexpected_external_requests": 0,
+      "script_errors": 0,
+      "real_404": true,
+      "production_writes": 0,
+      "checked_at": "2026-09-01T22:53:18.710Z"
+    },
+    "infrastructure": {
+      "postgresql": "17.11 disposable CI service",
+      "docker_compose": "actual nonroot API/worker/db and restricted runtime bootstrap passed",
+      "durable_host": false
+    },
+    "artifact": {
+      "id": 9824021090,
+      "digest": "sha256:fa1dc674a496cb5b95db5eff6303f5d1433e40fcc6dcd27ddca6f6815ee4756e",
+      "expires_at": "2026-11-30"
+    }
+  },
+  "rollback": {
+    "status": "publicly_verified",
+    "baseline_commit": "424def79b9865afbd06940dc97380a9db0abf7e7",
+    "temporary_commit": "06d6d493f627c1db42bc6d5afa74696660945739",
+    "restored_commit": "2bdf8343b68823d323c5a30877c2a51c86e16810",
+    "baseline_and_restored_tree": "962816b3497c193b0d161dfc60e301a92e80fabc",
+    "baseline_manifest_sha256": "9b75ff958a5fd675efbe263b5e0dd91d6949759c5308169b03207cc6dc852c27",
+    "temporary_manifest_sha256": "219df6d350fcbd3d011bf3d284ed07151f9e8d8def19e9026b2fb08fe2c4ddc3",
+    "changed_paths": [
+      "guides/descriptive-titles/index.html",
+      "inventory.json"
+    ],
+    "reviewer": "independent public_rollback_verifier",
+    "restoration_pr": "https://github.com/DARKLORDVINAY/seo-test-lab/pull/3",
+    "scope": "All 26 HTML hashes and observed directives matched baseline; rendered behaviour/404 passed; full tracked Git tree matched A. Non-HTML asset bytes were not individually downloaded and hashed.",
+    "autonomous": false,
+    "commercial_effect": null
+  },
+  "authority": {
+    "level": 1,
+    "production_enabled": false,
+    "earned_categories": [],
+    "autonomous_production_mutations": 0,
+    "manual_public_deployment_phases": [
+      "baseline_a",
+      "temporary_b",
+      "restored_a"
+    ]
+  },
+  "failures": [
+    {
+      "kind": "local_public_crawl_dns",
+      "status": "failed_closed",
+      "effect": "Workspace public DNS resolution failed. The incomplete local observation produced raw FN=13; it is not an admissible detector-accuracy estimate. Public GitHub Actions observations succeeded.",
+      "guardrail_weakened": false
+    },
+    {
+      "kind": "secondary_workers_preview",
+      "status": "unresolved",
+      "effect": "Pre-existing Workers mirror preview checks fail; its main production builds and the selected Cloudflare Pages builds succeed. No unrelated service configuration changed."
+    },
+    {
+      "kind": "artifact_transfer",
+      "status": "limited",
+      "effect": "Connected download returned a signed artifact URL, but workspace retrieval returned HTTP 403. Full CI SQL/JSON/screenshot bundles remain in GitHub artifacts; only verified API log summaries are copied here."
+    }
+  ],
+  "remaining_gates": [
+    "Durable PostgreSQL/container/API/worker host and backups",
+    "Google account connection and GSC API read identity/property access",
+    "Dedicated GA4 test property, web stream and verified event receipt",
+    "Live model credentials, approved spend bound and live independent reasoning evaluation",
+    "Remote MCP HTTPS/OAuth integration",
+    "Independent outcome calibration and explicit category-specific human graduation"
+  ],
+  "measurement": {
+    "practice_event": "lab_checklist_complete",
+    "analytics_connected": false,
+    "analytics_receipt_verified": false,
+    "commercial_conversion_definition_verified": false,
+    "real_seo_impact": "unmeasured",
+    "calibration_earned": false
+  },
+  "canonical_audit": {
+    "site_id": "86fb5cb7-5247-4cc7-a2fb-34a0a7bd5bc9",
+    "experiment_id": "530f3a79-a8b5-4038-a4bb-068a8895b118",
+    "manifest_sha256": "9b75ff958a5fd675efbe263b5e0dd91d6949759c5308169b03207cc6dc852c27",
+    "checkpoint_action_id": "f13e59ad-e2f0-44d6-93fd-8b800e04db83",
+    "rollback_event_id": "1619d75c-236c-40f6-b88f-7354e08a716c",
+    "verdict": "public_integrity_restored",
+    "evidence_ids": {
+      "baseline_a": "965f05d2-9d54-4550-8850-1740999e8f24",
+      "temporary_b": "cd1b4776-e3a2-439f-83b4-05c55374de52",
+      "restored_a": "baa1557b-c633-4773-bbb3-ea400b4a171e",
+      "foundation_ci": "1c54b7bf-77a3-4cf8-a62f-78ec2c5a4986",
+      "authority": "035ec341-a0a9-47a0-8cbf-ca59b2476e97",
+      "independent_review": "414ca539-7a60-46d7-9635-27f3b177ed06"
+    },
+    "authority": {
+      "level": 1,
+      "production_enabled": false,
+      "earned_categories": [],
+      "autonomous_production_mutations": 0,
+      "manual_public_deployment_phases": [
+        "baseline_a",
+        "temporary_b",
+        "restored_a"
+      ]
+    }
+  }
+}

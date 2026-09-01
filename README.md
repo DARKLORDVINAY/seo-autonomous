@@ -2,7 +2,7 @@
 
 A persistent, evidence-led SEO control loop optimising **incremental qualified organic conversion value**. Python 3.12, FastAPI, SQLAlchemy/Alembic, PostgreSQL, OpenAI Agents SDK, semantic MCP tools and a lightweight Mission Control dashboard.
 
-**Current release: Level 1, shadow by default.** The local fixture loop works without credentials. Live provider adapters and guarded execution are implemented; real-site effectiveness, production PostgreSQL and deployed infrastructure require their activation gates. A passing synthetic test is not evidence of SEO uplift.
+**Current release: Level 1, shadow by default.** The [26-page public Test Lab](https://seo-test-lab.pages.dev/) has passed its structural shadow benchmark and observed public rollback. Actual PostgreSQL/container CI passed 633 tests with zero skips. Durable hosting, Google ingestion and live model activation remain connection gates. A structural test is not evidence of SEO uplift. See the [verified Test Lab results](docs/TEST_LAB_RESULTS.md).
 
 ## Run the offline workspace
 
@@ -33,7 +33,7 @@ Run `.venv/bin/python -m backend.app.scheduler --describe` to inspect the author
 | MCP | Fixed semantic tools; no SQL, shell, arbitrary HTML, approval or authority-escalation tool |
 | Mission Control | Overview, opportunities, pages, queries, technical, SERPs, AI search, experiments, actions, agents, failures, strategy and approval history |
 
-SERP and AI Mode clients are implemented and tested with mocked responses. Their paid collection is opt-in and is **not scheduled automatically** in this release. AI citation absence is unknown without a compatible observation. GitHub integration is read-only; no repository is silently repurposed or published.
+SERP and AI Mode clients are implemented and tested with mocked responses. Their paid collection is opt-in and is **not scheduled automatically** in this release. AI citation absence is unknown without a compatible observation. The runtime GitHub integration is read-only. Separately authorised manual Test Lab releases use reviewed GitHub PRs and immutable operator audit receipts.
 
 The built-in WordPress adapter deliberately blocks existing-page production updates because core WordPress REST does not supply the atomic compare-and-swap contract this executor requires. CMS drafts have a separate guarded path. Do not disable the concurrency guard to make a demonstration pass; use a verified site-side adapter/extension before production updates.
 
@@ -45,7 +45,7 @@ The built-in WordPress adapter deliberately blocks existing-page production upda
 .venv/bin/python -m alembic check
 ```
 
-See `docs/VERIFICATION.md` for the recorded checkpoint, exact gates and known limitations. GitHub Actions adds PostgreSQL, migration drift checking, restricted runtime-role checks and Compose startup. Two actual-PostgreSQL tests skip explicitly when `TEST_POSTGRES_URL` is missing. A workflow file existing is not evidence it has run.
+See `docs/VERIFICATION.md` for the recorded checkpoint, exact gates and known limitations. GitHub Actions has exercised PostgreSQL, migration drift checking, restricted runtime-role checks and Compose startup. Two actual-PostgreSQL tests skip explicitly in local environments without `TEST_POSTGRES_URL`; both passed in the linked CI run.
 
 ## Connect a real site
 

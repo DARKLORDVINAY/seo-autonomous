@@ -69,7 +69,7 @@ python3 scripts/init_env.py
 docker compose up -d --build --wait db api worker
 ```
 
-See `DEPLOYMENT.md` for host TLS, backups, restricted role and secret mounting. The API remains local/private. The authoritative backend worker supplies repeat scheduling; no conversational context or ephemeral CI runner is the canonical database. CI now exercises the lab loop and restore drill against its disposable PostgreSQL service, alongside the existing real-role and container gates. Remote CI has to run successfully before those gates can be called verified.
+See `DEPLOYMENT.md` for host TLS, backups, restricted role and secret mounting. The API remains local/private. The authoritative backend worker supplies repeat scheduling; no conversational context or ephemeral CI runner is the canonical database. CI now exercises the lab loop and restore drill against its disposable PostgreSQL service, alongside the existing real-role and container gates. The actual CI and public deployment gates have now passed; see `TEST_LAB_RESULTS.md` for run identifiers and evidence. The CI PostgreSQL service is disposable and does not establish durable hosting.
 
 ## Public registration and repeated observation
 

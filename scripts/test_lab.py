@@ -69,6 +69,17 @@ def main(argv: list[str] | None = None) -> int:
             precision=result["assessment"]["precision"], recall=result["assessment"]["recall"],
             false_positives=result["assessment"]["false_positives"], false_negatives=result["assessment"]["false_negatives"],
             structural_benchmark_passed=result["assessment"]["structural_benchmark_passed"], level_2_eligible=False)
+        # Emit the actual assessed metrics so remote observation remains reviewable
+        # even when its binary artifact download is unavailable to an operator.
+        summary.update({key: result["assessment"][key] for key in (
+            "true_positives", "correct_no_action", "false_no_action", "coverage_complete",
+            "high_critical_intercepted", "zero_autonomous_production_changes")})
+        summary.update(manifest_sha256=result["manifest_sha256"],
+            decision_packet_sha256=result["decision_packet_sha256"],
+            live_model_executed=result["live_model_executed"],
+            risk_previews=[{"kind": item["kind"], "candidate_mutation": item["candidate_mutation"],
+                "mutation_risk": item["mutation_risk"], "allowed": item["gate"]["allowed"]}
+                for item in result["risk_previews"]])
         print(json.dumps(summary, ensure_ascii=False))
         return 0 if result["assessment"]["structural_benchmark_passed"] else 2
     except Exception as error:
