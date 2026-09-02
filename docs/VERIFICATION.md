@@ -1,5 +1,7 @@
 # Release verification — 2026-09-01
 
+September 2 continuation: the dedicated GA4 stream and its persisted privacy settings are verified. The reviewed opt-in static tag release is deployed; receipt is still unverified. See [GA4_ACTIVATION.md](GA4_ACTIVATION.md). The dated test and rollback figures below remain historical evidence, not a claim that Google ingestion is connected.
+
 **633 passed, zero skipped, zero failed** on [actual PostgreSQL/container CI](https://github.com/DARKLORDVINAY/seo-autonomous/actions/runs/33568223519). The earlier local run passed 631 tests and explicitly skipped two PostgreSQL gates; both ran successfully in CI. Ruff, JavaScript syntax, migration drift and MCP protocol gates passed.
 
 The [26-page public Test Lab](https://seo-test-lab.pages.dev/) passed its real HTTPS structural benchmark and rendered-browser checks. A temporary title revision was deployed, observed and restored through independently reviewed GitHub PRs. [Final public verification](https://github.com/DARKLORDVINAY/seo-autonomous/actions/runs/33571682933) reported 13 true positives, zero false positives/negatives, 13 correct NO-ACTION decisions, complete coverage and all high/critical probes intercepted. Details, limits, hashes and deployment identifiers are in [TEST_LAB_RESULTS.md](TEST_LAB_RESULTS.md).
@@ -22,7 +24,7 @@ The [26-page public Test Lab](https://seo-test-lab.pages.dev/) passed its real H
 | --- | --- |
 | Durable PostgreSQL/container service | Package verified in disposable CI; no permanent owner host or backups connected |
 | Recurring real ingestion | Backend scheduler implemented; durable host required |
-| GSC / GA4 | Google sign-in and read identity needed; test property/stream and event delivery unconfigured |
+| GSC / GA4 | Browser ownership and dedicated stream/privacy settings verified; opt-in tag deployed; backend read identity, test-key-event registration and event receipt pending |
 | Live model / paid SERP | Credentials and explicit budget missing; no live model calls made |
 | Remote Work MCP | Deployed HTTPS service and OAuth issuer/client registration required |
 | Commercial WordPress mutation | No business site connected; atomic adapter and site-specific restore gate still required |

@@ -2,10 +2,10 @@
   "base_url": "https://seo-test-lab.pages.dev",
   "repository": "DARKLORDVINAY/seo-test-lab",
   "source_repository": "DARKLORDVINAY/seo-autonomous",
-  "release_commit": "2bdf8343b68823d323c5a30877c2a51c86e16810",
-  "expected_manifest_sha256": "9b75ff958a5fd675efbe263b5e0dd91d6949759c5308169b03207cc6dc852c27",
+  "release_commit": "01608070c2ed22de636a703a673ed4da46a00a9c",
+  "expected_manifest_sha256": "5596ab79b4c5b96a4729b281bccc274b17b59ffba930f79c32291711460031aa",
   "gsc_verification_token": "7MXzKAPzVwC4ldMxBNGhhWWneZ46IDXw_wlEbKRPGIg",
-  "ga4_measurement_id": null,
+  "ga4_measurement_id": "G-5CZFWBNRC3",
   "autonomy_level": 1,
   "production_enabled": false,
   "purpose": "Controlled public educational demonstration; no commercial conversion value"

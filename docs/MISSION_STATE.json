@@ -42,24 +42,30 @@
     "postgres_ci_verified": true,
     "docker_ci_verified": true,
     "public_browser_verified": true,
-    "durable_backend_host": false
+    "durable_backend_host": false,
+    "gsc_browser_owner_verified": true,
+    "ga4_test_stream_configured": true,
+    "ga4_stream_privacy_verified": true,
+    "ga4_event_receipt_verified": false,
+    "google_backend_api_connected": false
   },
   "unknowns": [
     "durable PostgreSQL/container host",
     "Search Console API read identity and property access",
-    "dedicated test GA4 property/measurement ID",
+    "GA4 test-key-event registration and actual event receipt",
     "live model credentials and explicit price budget"
   ],
   "blockers": [
     "No durable PostgreSQL/container host is connected; CI services are disposable",
-    "Google browser is at account sign-in; GSC API identity and dedicated GA4 test property are not configured",
+    "GSC browser ownership and the dedicated GA4 stream are verified; backend Google API credentials remain unconnected",
+    "The opt-in analytics release is deployed; test-key-event registration and actual event receipt still require verification",
     "Live model credentials and an explicit price/spend bound are unavailable",
     "Remote MCP needs a deployed HTTPS service and OAuth issuer/client registration"
   ],
   "critical_path": [
     "Connect the deployment owner's durable container/PostgreSQL host using the tested Compose package",
-    "Connect Google securely, verify URL-prefix property and configure read-only GSC/GA4 identity",
-    "Create or select dedicated GA4 test web stream, enable opt-in test event and verify receipt",
+    "Configure read-only GSC/GA4 identity securely; existing browser ownership and stream setup must not be recreated",
+    "Register the noncommercial lab_checklist_complete key event and verify actual opt-in receipt",
     "Configure live model and approved conservative price/spend bound for independent shadow reasoning",
     "Run the authoritative backend scheduler; accumulate independent outcomes without graduating automatically"
   ],
@@ -217,13 +223,16 @@
     "26-page public Cloudflare Pages release",
     "three real public attested shadow benchmark runs",
     "complete public browser test interaction and 404 checks",
-    "independently reviewed public A-to-B-to-A rollback"
+    "independently reviewed public A-to-B-to-A rollback",
+    "GSC URL-prefix ownership verified in the owner's browser",
+    "dedicated GA4 stream and persisted privacy settings verified",
+    "independently reviewed consent-gated GA4 static release deployed"
   ],
-  "updated_at": "2026-09-01T23:42:06.157616+00:00",
+  "updated_at": "2026-09-02T21:12:46.511Z",
   "phase_status": {
     "0": "documentation and capability checks complete",
     "1": "foundation and actual PostgreSQL/container CI passed; durable deployment pending",
-    "2": "public lab inventory/crawl ingested in CI PostgreSQL; GSC/GA4 account activation pending",
+    "2": "public lab inventory/crawl ingested in CI PostgreSQL; GSC ownership and GA4 stream verified; API credentials and actual analytics receipt pending",
     "3": "public structural benchmark passed with 13TP, 0FP/FN and 13 correct NO-ACTION decisions",
     "4": "bounded deterministic shadow packets verified; live model reasoning not executed",
     "5": "manual public Git title change and observed rollback passed; autonomous execution disabled",
@@ -247,15 +256,24 @@
     "release_pages_prepared": 26,
     "gsc_tag_observed": true,
     "gsc_api_connected": false,
-    "release_pr": "https://github.com/DARKLORDVINAY/seo-test-lab/pull/3",
-    "release_commit": "2bdf8343b68823d323c5a30877c2a51c86e16810",
-    "manifest_sha256": "9b75ff958a5fd675efbe263b5e0dd91d6949759c5308169b03207cc6dc852c27",
+    "release_pr": "https://github.com/DARKLORDVINAY/seo-test-lab/pull/4",
+    "release_commit": "01608070c2ed22de636a703a673ed4da46a00a9c",
+    "manifest_sha256": "5596ab79b4c5b96a4729b281bccc274b17b59ffba930f79c32291711460031aa",
     "public_canonical_site_id": "86fb5cb7-5247-4cc7-a2fb-34a0a7bd5bc9",
-    "release_experiment_id": "530f3a79-a8b5-4038-a4bb-068a8895b118",
-    "pages_deployment": "552a409d-0ba9-4646-9ed7-bdf0b6aba387",
-    "gsc_browser_state": "sign_in_required",
+    "release_experiment_id": "af5d2a12-68f9-433e-ac21-62257b255ab6",
+    "pages_deployment": "bc6bc78a-af6d-4c86-a565-fd362f232c0c",
+    "gsc_browser_state": "verified_owner",
+    "ga4_measurement_id": "G-5CZFWBNRC3",
+    "ga4_stream_configured": true,
+    "ga4_enhanced_measurement_enabled": false,
+    "ga4_optional_account_sharing_enabled": false,
+    "ga4_tag_deployed_opt_in": true,
+    "ga4_test_key_event_registered": false,
+    "ga4_event_receipt_verified": false,
     "rollback_event_id": "1619d75c-236c-40f6-b88f-7354e08a716c",
-    "checkpoint_action_id": "f13e59ad-e2f0-44d6-93fd-8b800e04db83"
+    "checkpoint_action_id": "5b1a8dab-1d2b-409c-b761-24a0cfd957fe",
+    "activation_runbook": "docs/GA4_ACTIVATION.md",
+    "verification_scope": "The verified_checkpoint object preserves the dated baseline test/rollback evidence; evaluate the new release with the public workflow against public_target.json."
   },
   "ground_truth": {
     "path": "test_lab/ground_truth.json",
@@ -294,7 +312,7 @@
   "contradictions": [
     {
       "claim": "An earlier memory gave a different Search Console verification value",
-      "resolution": "Preserve directly observed Pages and GitHub index.html value from current deployment; account/API verification remains unconfirmed",
+      "resolution": "Preserve the directly observed Pages/GitHub value. September 2 browser evidence confirms property ownership; backend API access remains unconfirmed.",
       "status": "resolved_for_build"
     }
   ],
