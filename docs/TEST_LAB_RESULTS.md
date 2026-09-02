@@ -4,6 +4,8 @@ The [26-page demonstration](https://seo-test-lab.pages.dev/) is publicly deploye
 
 This development benchmark does not establish SEO uplift, qualified conversions, generalisation to other sites, or live model reasoning quality. The site clearly identifies itself as an educational test project and makes no customer or commercial claims.
 
+September 2 continuation: [GA4_ACTIVATION.md](GA4_ACTIVATION.md) records the newer opt-in analytics release. The A/B/A table below is preserved as the September 1 benchmark/rollback record. Current release pins are in `test_lab/public_target.json`; new public observations must use those pins.
+
 ## Observed results
 
 | Measure | Temporary revision B | Restored baseline A |
@@ -63,12 +65,12 @@ Those CI services are disposable. A durable container/PostgreSQL host, backups, 
 - A pre-existing Workers mirror fails preview builds. Its production builds succeed, as do the selected Cloudflare Pages deployments. The preview failure remains unresolved; no unrelated service configuration changed.
 - CI artifact download through this workspace returned HTTP 403. Full SQL/JSON/browser bundles remain in the linked GitHub runs; public-run artifacts expire on **2026-09-15**. Checked API log summaries and the operator audit are preserved separately. They are not a fabricated import of the complete remote database.
 - Live model execution was **false**. Deterministic diagnosis, bounded shadow packets and policy checks ran; live SDK reasoning and independent outcome calibration remain unverified.
-- Google sign-in is required. The public verification tag was preserved, but GSC API property access remains unverified. A dedicated GA4 test property/web stream is not configured.
+- Google browser ownership and a dedicated GA4 test stream are now verified. Optional account sharing and enhanced measurement are off. The public verification tag is preserved; backend GSC/GA4 API access remains unverified.
 - The practice event is `lab_checklist_complete`. Browser checks confirmed local completion without sending analytics. GA4 receipt is unverified; the event has no commercial value.
 
 ## Resume the critical path
 
-Connect the owner's durable Docker/PostgreSQL environment using `DEPLOYMENT.md`, then bind the lab to read-only Google credentials and a separate GA4 test property. Keep secrets in the host's secret mechanism. Verify Search Console property access and actual test-event delivery before claiming ingestion. Configure an explicitly approved model and price bound for live shadow reasoning through the existing backend configuration; the structural benchmark CLI intentionally remains deterministic.
+Connect the owner's durable Docker/PostgreSQL environment using `DEPLOYMENT.md`, then bind the lab to read-only Google credentials for the already-created test properties. Do not recreate account setup. Keep secrets in the host's secret mechanism. Verify API property access and actual test-event delivery before claiming ingestion. Configure an explicitly approved model and price bound for live shadow reasoning through the existing backend configuration; the structural benchmark CLI intentionally remains deterministic.
 
 Keep `AUTONOMY_LEVEL=1`, `PRODUCTION_ENABLED=false`, `SHADOW_MODE=true`, no earned categories and a zero site write budget. A structural pass and restoration do not satisfy the independent outcome/calibration requirements in `AUTONOMY_POLICY.md`.
 
