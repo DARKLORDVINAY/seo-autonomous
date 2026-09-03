@@ -27,6 +27,7 @@ include = ["backend*", "seo_mcp*"]
 testpaths = ["tests", "mcp/tests"]
 pythonpath = ["."]
 asyncio_mode = "auto"
+junit_family = "xunit1"
 
 [tool.ruff]
 line-length = 120

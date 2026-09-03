@@ -33,7 +33,7 @@ def verify_database_role() -> None:
 def main(argv: list[str] | None = None) -> int:
     args = list(sys.argv[1:] if argv is None else argv)
     mode = args.pop(0) if args else "api"
-    if mode not in {"api", "worker", "migrate", "bootstrap", "mcp"}:
+    if mode not in {"api", "worker", "migrate", "bootstrap", "mcp", "preflight"}:
         raise ValueError("Unknown container service mode")
     if mode != "mcp":
         os.environ["DATABASE_URL"] = database_url_from_environment()
@@ -56,12 +56,13 @@ def main(argv: list[str] | None = None) -> int:
             engine.dispose()
         print("Migrations and restricted runtime grants completed.")
         return 0
-    if mode in {"api", "bootstrap"}:
+    if mode in {"api", "bootstrap", "preflight"}:
         verify_database_role()
     commands = {
         "api": [sys.executable, "-m", "uvicorn", "backend.app.main:app", "--host", "0.0.0.0", "--port", "8000", "--no-server-header"],
         "worker": [sys.executable, "-m", "backend.app.scheduler"],
         "bootstrap": [sys.executable, "-m", "scripts.bootstrap"],
+        "preflight": [sys.executable, "-m", "scripts.deployment_preflight"],
         "mcp": [sys.executable, "-m", "seo_mcp.server", "--transport", "streamable-http"],
     }
     command = commands[mode] + args

@@ -17,6 +17,7 @@ class Settings(BaseSettings):
     autonomy_level: int = Field(default=1, ge=0, le=5)
     production_enabled: bool = False
     shadow_mode: bool = True
+    verification_only: bool = False
     api_token: SecretStr | None = None
     approval_token: SecretStr | None = None
     admin_token: SecretStr | None = None
@@ -54,6 +55,14 @@ class Settings(BaseSettings):
 
     @model_validator(mode="after")
     def validate_authority(self) -> "Settings":
+        if self.verification_only:
+            if (self.autonomy_level != 1 or self.production_enabled or not self.shadow_mode
+                    or self.provider_mode != "fixture" or self.agent_mode not in {"fixture", "deterministic"}
+                    or self.max_daily_actions != 0 or self.max_daily_cost_usd != 0):
+                raise ValueError("Verification-only deployment requires Level 1, fixture providers and zero action/spend budgets")
+            if any((self.openai_api_key, self.google_application_credentials, self.wordpress_application_password,
+                    self.dataforseo_login, self.dataforseo_password, self.github_token)):
+                raise ValueError("Verification-only deployment must not receive provider credentials")
         tokens = [t.get_secret_value() for t in (self.api_token, self.approval_token, self.admin_token) if t]
         if len(tokens) != len(set(tokens)):
             raise ValueError("Agent, approval, and administrator tokens must be distinct capabilities")

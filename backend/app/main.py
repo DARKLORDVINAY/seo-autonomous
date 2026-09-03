@@ -24,6 +24,7 @@ from backend.app.config.settings import Settings, get_settings
 from backend.app.contracts import ActionKind, CMSPage, ProviderUnavailable, VerificationPacket, utcnow
 from backend.app.db import models as m
 from backend.app.db.session import get_session
+from backend.app.db.readiness import verify_schema_revision
 from backend.app.observability.logging import instrument
 from backend.app.services import control
 
@@ -70,9 +71,10 @@ def readiness(session: DB):
     try:
         session.execute(text("SELECT 1"))
         session.execute(select(m.Site.id).limit(1))
+        verify_schema_revision(session)
         return {"status": "ready"}
-    except SQLAlchemyError:
-        raise HTTPException(503, "Database is not migrated or reachable")
+    except (SQLAlchemyError, ValueError):
+        raise HTTPException(503, "Database is not reachable or does not match this release's migration head")
 
 
 @app.get("/api/sites")

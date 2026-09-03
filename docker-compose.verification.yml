@@ -1,0 +1,45 @@
+# Prepared package only: this does not provision a host or enable recurrence.
+# Select an existing immutable local image ID or repo@sha256 digest explicitly.
+x-verification-environment: &verification-environment
+  VERIFICATION_ONLY: "true"
+  SEO_RELEASE_IMAGE: ${SEO_RELEASE_IMAGE:?Set the reviewed immutable image digest}
+  AUTONOMY_LEVEL: "1"
+  PRODUCTION_ENABLED: "false"
+  SHADOW_MODE: "true"
+  PROVIDER_MODE: fixture
+  AGENT_MODE: fixture
+  MAX_DAILY_ACTIONS: "0"
+  MAX_DAILY_COST_USD: "0"
+  OPENAI_API_KEY: ""
+  OPENAI_MODEL: ""
+  GOOGLE_APPLICATION_CREDENTIALS: ""
+  GSC_PROPERTY: ""
+  GA4_PROPERTY_ID: ""
+  WORDPRESS_URL: ""
+  WORDPRESS_USERNAME: ""
+  WORDPRESS_APPLICATION_PASSWORD: ""
+  DATAFORSEO_LOGIN: ""
+  DATAFORSEO_PASSWORD: ""
+  GITHUB_TOKEN: ""
+
+services:
+  migrate:
+    image: ${SEO_RELEASE_IMAGE:?Set the reviewed immutable image digest}
+    pull_policy: never
+  api:
+    image: ${SEO_RELEASE_IMAGE:?Set the reviewed immutable image digest}
+    pull_policy: never
+    environment:
+      <<: *verification-environment
+      SCHEDULER_ENABLED: "false"
+  worker:
+    image: ${SEO_RELEASE_IMAGE:?Set the reviewed immutable image digest}
+    pull_policy: never
+    profiles: [verified-scheduler]
+    restart: "no"
+    environment:
+      <<: *verification-environment
+      SCHEDULER_ENABLED: "true"
+  mcp:
+    image: ${SEO_RELEASE_IMAGE:?Set the reviewed immutable image digest}
+    pull_policy: never

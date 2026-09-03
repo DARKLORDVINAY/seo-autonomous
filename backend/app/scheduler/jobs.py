@@ -21,6 +21,10 @@ INTEGRITY_CRAWL = "integrity-crawl"
 EVENING_MEASUREMENT = "evening-measurement"
 WEEKLY_REVIEW = "weekly-review"
 JOB_NAMES = (DAILY_CYCLE, INTEGRITY_CRAWL, EVENING_MEASUREMENT, WEEKLY_REVIEW)
+# A restart/duplicate tick must not reset a provider's retry budget. This is a
+# hard ceiling per site + job + scheduled period, counted from immutable audit
+# attempts under the site lease, not from process memory or caller-supplied IDs.
+MAX_OBSERVATION_ATTEMPTS = 3
 
 
 def period_key(job_name: str, now: datetime, timezone_name: str) -> str:
@@ -112,7 +116,7 @@ def run_observation_job(
         control.site_record(session, site_id)
         previous = session.scalar(select(m.JobRun).where(
             m.JobRun.site_id == site_id, m.JobRun.job_name == job_name, m.JobRun.idempotency_key == key))
-        if previous and previous.status == "completed":
+        if previous and previous.status in {"completed", "retry_exhausted"}:
             return {"job_id": previous.id, "status": previous.status, "idempotent_replay": True, "result": previous.result_json}
         with fenced_site_work(session, site_id, owner=owner, ttl_seconds=settings.scheduler_lease_seconds,
                               session_factory=factory) as handle:
@@ -120,12 +124,52 @@ def run_observation_job(
                 return {"status": "lease_busy", "site_id": site_id, "job_name": job_name}
             site = control.site_record(session, site_id)
             # Re-check under the lease: another worker may have completed after
-            # our optimistic read but before this acquisition.
+            # our optimistic read but before this acquisition. The session uses
+            # expire_on_commit=False, so refresh an already-cached failed/run
+            # row instead of accidentally retrying its stale in-memory state.
             job = session.scalar(select(m.JobRun).where(m.JobRun.site_id == site_id,
-                m.JobRun.job_name == job_name, m.JobRun.idempotency_key == key))
-            if job and job.status == "completed":
+                m.JobRun.job_name == job_name, m.JobRun.idempotency_key == key)
+                .execution_options(populate_existing=True))
+            if job and job.status in {"completed", "retry_exhausted"}:
                 return {"job_id": job.id, "status": job.status, "idempotent_replay": True, "result": job.result_json}
             recovered = job is not None
+            if job is not None:
+                attempts = list(session.scalars(select(m.Action).where(
+                    m.Action.site_id == site_id, m.Action.kind == "scheduled_observation",
+                    m.Action.idempotency_key.startswith(f"job:{job.id}:attempt:"))
+                    .order_by(m.Action.created_at, m.Action.id)))
+                if len(attempts) >= MAX_OBSERVATION_ATTEMPTS:
+                    job.status, job.completed_at, job.error = "retry_exhausted", m.utcnow(), "RetryBudgetExhausted"
+                    job.result_json = {**job.result_json, "retry_attempts": len(attempts),
+                                       "retry_limit": MAX_OBSERVATION_ATTEMPTS, "requires_human_review": True}
+                    session.add(m.ActionEvent(site_id=site_id, action_id=attempts[-1].id,
+                        event_type="scheduler_retry_exhausted", details_json={"job_id": job.id,
+                        "attempts": len(attempts), "production_write": False}))
+                    session.add(m.FailureCase(site_id=site_id, action_id=attempts[-1].id,
+                        category="scheduled_retry_exhausted", predicted=f"Complete bounded {job_name}",
+                        actual="Scheduled period exhausted its durable attempt budget",
+                        root_cause="Repeated failure or interrupted observation; inspect prior attempt events",
+                        agent_responsible="backend-scheduler", detection_method="Durable per-period retry admission",
+                        preventative_change="Operator diagnosis; no automatic reset or new key for this period",
+                        details_json={"job_id": job.id, "attempts": len(attempts), "production_write": False}))
+                    session.commit()
+                    return {"job_id": job.id, "status": "retry_exhausted", "result": job.result_json}
+                if job.status == "running":
+                    # Reacquiring an expired/released site lease does not make
+                    # the old attempt a success. Preserve ambiguity before an
+                    # explicitly repeatable read/review is attempted again.
+                    last_action_id = attempts[-1].id if attempts else None
+                    if last_action_id:
+                        session.add(m.ActionEvent(site_id=site_id, action_id=last_action_id,
+                            event_type="scheduler_interrupted", details_json={"job_id": job.id,
+                            "state": "unknown", "production_write": False}))
+                    session.add(m.FailureCase(site_id=site_id, action_id=last_action_id,
+                        category="scheduled_observation_interrupted", predicted=f"Complete {job_name}",
+                        actual="Prior attempt has no durable terminal outcome",
+                        root_cause="Worker termination, lease loss or unavailable audit storage; exact cause unknown",
+                        agent_responsible="backend-scheduler", detection_method="Lease-fenced restart reconciliation",
+                        preventative_change="Retain unknown outcome; only repeatable observations may retry within the cap",
+                        details_json={"job_id": job.id, "state": "unknown", "production_write": False}))
             if job is None:
                 job = m.JobRun(site_id=site_id, job_name=job_name, idempotency_key=key, owner=owner)
                 session.add(job)

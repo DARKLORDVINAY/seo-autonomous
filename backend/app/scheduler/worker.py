@@ -126,7 +126,8 @@ def main(argv: list[str] | None = None) -> int:
             results = run_scheduled_job(factory, settings, args.once, site_id=args.site_id)
             print(json.dumps({"job": args.once, "sites": [{key: row[key] for key in ("site_id", "job_id", "status") if key in row}
                                                           for row in results]}))
-            return 1 if any(row["status"] in {"failed", "lease_lost"} for row in results) else 0
+            return 1 if any(row["status"] in {"failed", "lease_lost", "retry_exhausted", "reconciliation_required"}
+                            for row in results) else 0
         scheduler = build_scheduler(factory, settings)
 
         def stop(signum, frame):

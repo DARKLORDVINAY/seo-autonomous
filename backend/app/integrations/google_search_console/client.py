@@ -2,6 +2,7 @@
 from __future__ import annotations
 
 from datetime import date, timedelta
+import math
 from urllib.parse import quote
 
 from pydantic import ValidationError
@@ -34,7 +35,7 @@ class GSCClient:
         if set(dimensions) - {"date", "page", "query", "country", "device"}:
             raise ValueError("Unsupported GSC dimension")
         url = f"https://www.googleapis.com/webmasters/v3/sites/{quote(self.property_url, safe='')}/searchAnalytics/query"
-        rows, seen = [], set()
+        rows, seen, metadata_pages = [], set(), []
         exhausted = False
         while len(rows) < max_rows:
             limit = min(page_size, max_rows - len(rows))
@@ -45,6 +46,20 @@ class GSCClient:
                                          headers={"Authorization": f"Bearer {self.token_provider()}"}))
             if not isinstance(data, dict) or ("rows" in data and not isinstance(data["rows"], list)):
                 raise MalformedResponse("Malformed GSC response")
+            metadata = data.get("metadata", {})
+            if not isinstance(metadata, dict):
+                raise MalformedResponse("Malformed GSC report metadata")
+            incomplete = metadata.get("first_incomplete_date")
+            if incomplete is not None:
+                try:
+                    if not isinstance(incomplete, str):
+                        raise ValueError("Incomplete date must be an ISO calendar date")
+                    incomplete_date = date.fromisoformat(incomplete)
+                    if incomplete_date <= end:
+                        raise ValueError("Final-only response declares incomplete requested dates")
+                except (TypeError, ValueError) as exc:
+                    raise MalformedResponse("GSC finality metadata is invalid or contradictory") from exc
+            metadata_pages.append(metadata)
             raw_rows = data.get("rows", [])  # GSC's documented empty result omits rows.
             if len(raw_rows) > limit:
                 raise MalformedResponse("GSC exceeded requested page size")
@@ -52,6 +67,12 @@ class GSCClient:
                 try:
                     if not isinstance(row, dict) or len(row["keys"]) != len(dimensions):
                         raise ValueError("Dimension mismatch")
+                    if (any(not isinstance(key, str) for key in row["keys"])
+                        or any(type(row[key]) not in (int, float) or not math.isfinite(row[key])
+                               for key in ("clicks", "impressions", "position"))):
+                        raise ValueError("GSC dimensions or metrics have invalid types/values")
+                    if row["clicks"] > row["impressions"]:
+                        raise ValueError("GSC clicks cannot exceed impressions at the same grain")
                     identity = tuple(row["keys"])
                     if identity in seen:
                         raise ValueError("Duplicate or stalled pagination")
@@ -60,7 +81,7 @@ class GSCClient:
                                     position=row["position"], data_state="final")
                     if not start <= result.date <= end:
                         raise ValueError("Out-of-range date")
-                except (KeyError, TypeError, ValueError, ValidationError) as exc:
+                except (KeyError, TypeError, ValueError, OverflowError, ValidationError) as exc:
                     raise MalformedResponse("Malformed GSC row or repeated pagination") from exc
                 seen.add(identity)
                 rows.append(result)
@@ -80,6 +101,7 @@ class GSCClient:
             "property": self.property_url, "start": str(start), "end": str(end),
             "dimensions": list(dimensions), "pagination_exhausted": exhausted,
             "data_state": "final", "missing_dates": sorted(map(str, requested - present)),
+            "report_metadata": metadata_pages,
             "full_dataset_guaranteed": False,
         })
 

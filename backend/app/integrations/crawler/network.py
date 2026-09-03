@@ -35,7 +35,7 @@ def public_ip(value: str) -> bool:
 
 
 def validate_url(url: str, *, origin: str | None = None, fixture: bool = False) -> str:
-    if not isinstance(url, str) or len(url) > 4096 or any(ord(c) < 33 for c in url) or "\\" in url:
+    if not isinstance(url, str) or len(url) > 4096 or any(ord(c) < 33 or ord(c) == 127 for c in url) or "\\" in url:
         raise UnsafeURL("URL contains invalid characters or exceeds length limit")
     try:
         parts = urlsplit(url)
@@ -58,7 +58,12 @@ def validate_url(url: str, *, origin: str | None = None, fixture: bool = False) 
         else:
             if not public_ip(str(address)):
                 raise UnsafeURL("Non-public IP is forbidden")
-    normal = str(httpx.URL(urlunsplit(("https", parts.netloc, parts.path or "/", parts.query, ""))))
+    try:
+        normal = str(httpx.URL(urlunsplit(("https", parts.netloc, parts.path or "/", parts.query, ""))))
+    except (httpx.InvalidURL, ValueError) as exc:
+        # Invalid IDNA and unpaired surrogates are attacker-controlled data too.
+        # Callers can fail closed on one public exception without logging URLs.
+        raise UnsafeURL("URL cannot be safely encoded") from exc
     if origin:
         expected = urlsplit(origin)
         actual = urlsplit(normal)

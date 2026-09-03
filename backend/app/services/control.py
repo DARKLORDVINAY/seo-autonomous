@@ -510,8 +510,31 @@ def run_cycle(session: Session, site_id: str, settings: Settings, *, idempotency
 def _run_leased_cycle(session: Session, site_id: str, settings: Settings, *, idempotency_key: str | None = None) -> dict:
     site = site_record(session, site_id)
     key = idempotency_key or str(uuid4())
-    previous = session.scalar(select(m.JobRun).where(m.JobRun.site_id == site_id, m.JobRun.idempotency_key == key))
+    # The caller can retain an older ORM identity across lease acquisition.
+    # Recovery decisions must use the completed state committed by any prior
+    # worker, not overwrite it from an expire_on_commit=False session cache.
+    previous = session.scalar(select(m.JobRun).where(m.JobRun.site_id == site_id,
+        m.JobRun.job_name == "seo-control-loop", m.JobRun.idempotency_key == key)
+        .execution_options(populate_existing=True))
     if previous:
+        if previous.status == "running":
+            # We hold a new site lease, so this is an abandoned durable run,
+            # not an active concurrent worker. A paid-capable/executor-capable
+            # cycle cannot be safely replayed from an unknown stage. Make the
+            # interruption explicit once, preserving partial evidence/results.
+            previous.status, previous.completed_at, previous.error = "reconciliation_required", utcnow(), "InterruptedCycle"
+            previous.result_json = {**previous.result_json, "recovery": {
+                "state": "unknown", "retry_safe": False, "requires_human_review": True}}
+            audit = local_audit(session, site_id, "control_loop_recovery", "mission-governor",
+                "Interrupted cycle requires reconciliation; no automatic re-execution",
+                {"job_id": previous.id, "production_write": False}, event_type="reconciliation_required")
+            session.add(m.FailureCase(site_id=site_id, action_id=audit.id, category="control_loop_interrupted",
+                predicted="Complete a bounded observation cycle", actual="Prior cycle has no durable terminal outcome",
+                root_cause="Worker termination, lease loss or unavailable storage; exact cause unknown",
+                agent_responsible="mission-governor", detection_method="Lease-fenced restart reconciliation",
+                preventative_change="Reconcile committed stages and reservations before authorising any retry",
+                details_json={"job_id": previous.id, "state": "unknown", "retry_safe": False}))
+            session.commit()
         return {"job_id": previous.id, "status": previous.status, "idempotent_replay": True, "result": previous.result_json}
     job = m.JobRun(site_id=site_id, job_name="seo-control-loop", idempotency_key=key, owner="mission-governor")
     session.add(job)

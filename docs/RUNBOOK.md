@@ -92,17 +92,14 @@ Migrations run with the owner role and then reapply the restricted runtime grant
 
 The named PostgreSQL volume persists across container recreation and `docker compose down`. Volume persistence is not a backup. Store backups encrypted outside the Docker host and test restoring them to an isolated database.
 
-For a consistent full snapshot, stop API/worker writes and create a custom-format owner dump in a private backup directory:
+For a release checkpoint, stop API/worker writes and use the non-overwriting backup utility with an already-configured private libpq service:
 
 ```sh
 docker compose stop worker api
-mkdir -m 700 -p backups
-umask 077
-docker compose exec -T db sh -c 'pg_dump -U "$POSTGRES_USER" -d "$POSTGRES_DB" --format=custom' > backups/seo.dump
-docker compose up -d api worker
+python -m scripts.backup_database --service seo_checkpoint_source --output-directory /operator/private/seo-backups --writers-stopped
 ```
 
-The command sends the dump to a file, not the terminal. Preserve the configuration and credentials separately in an operator-controlled secret store; keep them out of the repository and image. Dumps contain business records and immutable audit history.
+The utility requires PostgreSQL client tools; the service identifies the exact database without a password/DSN argument. It creates a unique private archive, verifies process success and archive listing, and records a checksum. Failed partial files are retained; no service is automatically restarted. Preserve configuration and credentials separately in an operator-controlled secret store. Dumps contain business records and immutable audit history. See the [durable package](DURABLE_DEPLOYMENT_PACKAGE.md) for managed-provider requirements, API-first restart, isolated restore and image/schema rollback gates.
 
 Restore first into a fresh, isolated PostgreSQL 17 database with compatible owner role names. Keep the application stopped, restore the archive with `pg_restore --exit-on-error`, run owner migrations and runtime grants, then verify migration version, row counts, audit immutability, source provenance, and active execution leases. Start the API for review before the worker. Reconcile uncertain CMS effects before resuming recurrence. Do not restore over the current production database without an explicit recovery decision.
 

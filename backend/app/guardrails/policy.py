@@ -65,8 +65,8 @@ def _valid_url(url: str, *, base_url: str | None = None, same_site: bool = False
     decoded = unescape(url).strip()
     if "\\" in decoded:
         return False
-    full = urljoin(base_url or "", decoded)
     try:
+        full = urljoin(base_url or "", decoded)
         parsed = urlsplit(full)
         _ = parsed.port
     except ValueError:
