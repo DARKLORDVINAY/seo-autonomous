@@ -124,6 +124,17 @@ earlier failure prevented creation of the ephemeral CI environment file.
 Updated JUnit configuration retains the
 soak/restore workload properties in a compatible report format.
 
+The corrected [disposable CI run](https://github.com/DARKLORDVINAY/seo-autonomous/actions/runs/33757762485)
+on source `46bfb451fb667a245859b5780bcec828dd3756ec` passed **870 tests,
+zero skipped/failed, one existing warning, in 116.68 seconds**. Actual PostgreSQL
+chaos and privilege gates, migrations/drift, checked dump/restore, nonroot image,
+fixed-zero preflight/startup with its worker stopped, dashboard browser checks,
+and all 26 local fixture-rendered pages passed. The v2 regression still reported
+the failed competence gate. These are disposable CI observations, not a new
+public-site release, Google event receipt, or a connected durable backend.
+The first failed run remains part of the failure record. The subsequent source
+checkpoint edits documentation only; this identifies the exact tested code.
+
 Independent post-evaluation author review was unavailable because that worker
 hit its usage limit. Integration review and metadata-only re-adjudication were
 performed by the root; this limitation is retained rather than represented as
