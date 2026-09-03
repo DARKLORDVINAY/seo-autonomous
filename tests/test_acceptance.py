@@ -13,6 +13,7 @@ from backend.app.db.session import get_session, make_engine, make_session_factor
 from backend.app.integrations.fixtures import FixtureCMS
 from backend.app.main import app
 from backend.app.services import control, measurement
+from scripts.bootstrap import migrate
 
 TOKENS = {"operator": "isolated-operator", "reviewer": "isolated-reviewer", "admin": "isolated-admin"}
 DEFINITION = {"verified": True, "tracking_verified": True, "qualification_verified": True,
@@ -27,9 +28,10 @@ REVIEW = {"verdict": "PASS", "confidence": .95, "reasons": ["Reviewed exact fixt
 
 
 @pytest.fixture
-def plane(monkeypatch):
-    engine = make_engine("sqlite://")
-    m.Base.metadata.create_all(engine)
+def plane(monkeypatch, tmp_path):
+    database_url = f"sqlite:///{tmp_path / 'acceptance.sqlite3'}"
+    migrate(database_url)
+    engine = make_engine(database_url)
     factory = make_session_factory(engine)
     settings = Settings(_env_file=None, environment="test", api_token=TOKENS["operator"],
         approval_token=TOKENS["reviewer"], admin_token=TOKENS["admin"], openai_model="configured-test-model")

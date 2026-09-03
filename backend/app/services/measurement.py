@@ -174,6 +174,47 @@ def _window(
     quality_flags = {flag for item in used.values() for flag in item.content.get("quality_flags", [])}
     if covered and not definition_matches:
         quality_flags.add("conversion_definition_changed")
+    # Date-level coverage cannot certify a page that disappeared from a newer
+    # report. Daily rows are mutable upserts; bind them to the selected immutable
+    # snapshot so retained/mismatched values cannot masquerade as a fresh result.
+    # Older explicitly scoped operator imports may lack a rows payload; their
+    # existing coverage contract is preserved, but collector batches always have
+    # a rows payload (including the meaningful empty list).
+    snapshots: dict[str, dict[tuple[str, str, str], dict[str, Any] | None]] = {}
+    for item in used.values():
+        if "rows" not in item.content:
+            continue
+        indexed: dict[tuple[str, str, str], dict[str, Any] | None] = {}
+        raw_rows = item.content["rows"]
+        if not isinstance(raw_rows, list):
+            quality_flags.add("api_disagreement")
+        else:
+            for raw in raw_rows:
+                if (not isinstance(raw, dict)
+                    or any(not isinstance(raw.get(key), str) for key in ("date", "landing_page", "channel"))):
+                    quality_flags.add("api_disagreement")
+                    continue
+                key = (raw["date"], raw["landing_page"], raw["channel"])
+                if key in indexed:
+                    indexed[key] = None
+                    quality_flags.add("api_disagreement")
+                else:
+                    indexed[key] = raw
+        snapshots[item.id] = indexed
+    current_rows = []
+    for row in rows:
+        item = by_date.get(row.date)
+        if item is not None and item.id in snapshots:
+            snapshot = snapshots[item.id].get((row.date.isoformat(), row.landing_page, row.channel))
+            if snapshot is None:
+                quality_flags.add("stale_page_observation_excluded")
+                continue
+            if any(snapshot.get(key) != getattr(row, key)
+                   for key in ("sessions", "key_events", "qualified_conversions", "conversion_value")):
+                quality_flags.add("api_disagreement")
+                continue
+        current_rows.append(row)
+    rows = current_rows
     observed_pairs = {(row.page_id, row.date) for row in rows}
     complete_dates = [day for day in complete_dates if all((page.id, day) in observed_pairs for page in pages)]
     if any((page.id, day) not in observed_pairs for page in pages for day in expected):
@@ -190,6 +231,11 @@ def _window(
     window = observation_window(records, start, end, complete_dates=complete_dates, tracking_complete=tracking_verified,
                                 conversion_value_mapping_verified=value_verified,
                                 qualified_conversion_mapping_verified=qualification_verified)
+    if "missing_page_date_observations" in quality_flags:
+        # A sum of the observed subset is not the primary outcome for the whole
+        # prespecified group/window. In particular, missing pages are not zeros.
+        window.qualified_conversions = None
+        window.qualified_conversion_value = None
     window.quality_flags = sorted(set(window.quality_flags) | quality_flags)
     window.partial_gsc = session.scalar(select(m.GSCDaily.id).where(
         m.GSCDaily.site_id == site.id, m.GSCDaily.date >= start, m.GSCDaily.date <= end,

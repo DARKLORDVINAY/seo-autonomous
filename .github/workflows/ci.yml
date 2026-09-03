@@ -57,7 +57,14 @@ jobs:
           python -m alembic upgrade head
           python -m alembic check
       - name: Run complete suite including actual PostgreSQL privilege and lease gates
+        env:
+          TEST_POSTGRES_CONTAINER: ${{ job.services.postgres.id }}
         run: python -m pytest -q --junitxml=artifacts/test-results.xml
+      - name: Replay frozen-protocol v2 regression (never autonomy graduation)
+        run: |
+          python scripts/benchmark_v2.py predict --split holdout --output artifacts/benchmark-v2-regression
+          python scripts/benchmark_v2.py evaluate --output artifacts/benchmark-v2-regression > artifacts/benchmark-v2-first-evaluation-log.json
+          python -m benchmarks.adjudication_v2 --output artifacts/benchmark-v2-regression
       - name: Build labelled static lab and run evaluator-isolated shadow benchmark on PostgreSQL
         run: |
           python test_lab/build.py --fixture --base-url https://example.test --output artifacts/test-lab-site
@@ -92,6 +99,14 @@ jobs:
           docker compose run --rm api bootstrap --demo
           docker compose run --rm api bootstrap --demo
           curl --fail --silent http://127.0.0.1:8000/readyz
+      - name: Check hard-zero durable package without starting its profiled worker
+        run: |
+          export SEO_RELEASE_IMAGE="$(docker image inspect spiral-max-seo:local --format '{{.Id}}')"
+          docker compose -f docker-compose.yml -f docker-compose.verification.yml config --quiet
+          docker compose stop worker api
+          docker compose -f docker-compose.yml -f docker-compose.verification.yml run --rm api preflight
+          docker compose -f docker-compose.yml -f docker-compose.verification.yml up -d --wait api
+          test -z "$(docker compose ps --status running --services worker)"
       - uses: actions/setup-node@v4
         with:
           node-version: "22"
@@ -111,7 +126,13 @@ jobs:
             artifacts/test-lab-*.png
             artifacts/test-lab-*.json
             artifacts/test-results.xml
+            artifacts/benchmark-v2-regression/commitment.json
+            artifacts/benchmark-v2-regression/predictions.json
+            artifacts/benchmark-v2-regression/evaluation.json
+            artifacts/benchmark-v2-regression/evaluation.sha256
+            artifacts/benchmark-v2-regression/metadata-adjudication.json
+            artifacts/benchmark-v2-regression/metadata-adjudication.sha256
           if-no-files-found: ignore
       - name: Stop isolated test stack
-        if: always()
+        if: always() && hashFiles('.env') != ''
         run: docker compose down

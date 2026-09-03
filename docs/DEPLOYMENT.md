@@ -2,6 +2,8 @@
 
 This repository runs the control API, a recurring backend worker, and PostgreSQL. A labelled `example.test` demo is available without provider credentials. Real sites start at Level 1 in shadow mode; registration does not crawl, call a model, or modify a website.
 
+The current account/hosting freeze uses the prepared [durable verification package](DURABLE_DEPLOYMENT_PACKAGE.md): an immutable-image overlay, hard-zero action/spend settings, API-first startup, schema-head preflight, and non-overwriting backup/recovery procedures. It does not provision an external host. The general examples below are not authorization to leave the current verification envelope.
+
 ## Local offline demonstration
 
 Use Python 3.12 from the repository directory:
@@ -41,7 +43,7 @@ docker compose run --rm api bootstrap --demo
 
 The API binds to `127.0.0.1:8000`; PostgreSQL has no published host port. The database persists in the `spiral-max-seo_seo-postgres` volume. API and worker processes run as UID/GID `10001`, with read-only filesystems, temporary `/tmp` storage, dropped Linux capabilities, and `no-new-privileges`. The image installs the exact Python versions in `requirements.lock.txt`.
 
-Compose waits for PostgreSQL health and successful completion of the one-shot migration service before starting the API or worker. This uses the documented [Compose dependency conditions](https://docs.docker.com/compose/how-tos/startup-order/). The API readiness check queries the migrated schema. The worker health check verifies that its scheduler heartbeat is recent; review job records separately for successful observations.
+Compose waits for PostgreSQL health and successful completion of the one-shot migration service before starting the API or worker. This uses the documented [Compose dependency conditions](https://docs.docker.com/compose/how-tos/startup-order/). The API readiness check requires the exact migration head shipped with the image. The worker health check verifies that its scheduler heartbeat is recent; review job records separately for successful observations.
 
 The `.env` `DATABASE_URL` is the local-development URL. Inside Compose, the entrypoint constructs an escaped PostgreSQL URL from each service's assigned `POSTGRES_*` values, including passwords containing reserved URL characters.
 

@@ -3,6 +3,7 @@ from __future__ import annotations
 
 import hashlib
 import json
+import math
 import time
 from collections import deque
 from dataclasses import dataclass
@@ -19,6 +20,28 @@ from backend.app.integrations.common import ObservationBatch, ProviderError, saf
 from backend.app.integrations.crawler.network import PublicHTTPTransport, UnsafeURL, validate_url
 
 USER_AGENT = "SpiralMaxSEO/0.1"
+
+
+def _finite_json_number(raw: str) -> float:
+    value = float(raw)
+    if not math.isfinite(value):
+        raise ValueError("Non-finite numbers are not JSON observations")
+    return value
+
+
+def _schema_json(raw: str):
+    value = json.loads(raw, parse_constant=_finite_json_number, parse_float=_finite_json_number)
+    pending, visited = [(value, 0)], 0
+    while pending:
+        node, depth = pending.pop()
+        visited += 1
+        if depth > 32 or visited > 10000:
+            raise ValueError("Schema structure exceeds the bounded allowance")
+        children = node.values() if isinstance(node, dict) else node if isinstance(node, list) else ()
+        if visited + len(pending) + len(children) > 10000:
+            raise ValueError("Schema structure exceeds the bounded allowance")
+        pending.extend((child, depth + 1) for child in children)
+    return value
 
 
 @dataclass
@@ -85,7 +108,10 @@ class Crawler:
                         location = response.headers.get("location")
                         if not location:
                             raise ProviderError("Redirect has no Location")
-                        target = self._validate(urljoin(current, location))
+                        try:
+                            target = self._validate(urljoin(current, location))
+                        except ValueError as exc:
+                            raise UnsafeURL("Invalid redirect target") from exc
                         if target in redirects or target == current:
                             raise ProviderError("Redirect loop detected")
                         redirects.append(current)
@@ -107,7 +133,9 @@ class Crawler:
                         if len(body) > self.max_bytes:
                             raise ProviderError("Response exceeds byte budget")
                     return response.status_code, dict(response.headers), bytes(body), current, redirects
-            except httpx.HTTPError as exc:
+            except (httpx.HTTPError, httpx.InvalidURL) as exc:
+                # httpx prepares response.next_request even when redirects are
+                # disabled. A hostile Location can fail there before our parser.
                 raise ProviderError("Crawl network failure; state unknown") from exc
         raise ProviderError("Redirect budget exceeded")
 
@@ -174,10 +202,18 @@ class Crawler:
         description = soup.find("meta", attrs={"name": lambda value: value and value.lower() == "description"})
         result.meta_description = str(description.get("content", "")) if description else ""
         base_node = soup.find("base", href=True)
-        document_base = urljoin(final, str(base_node["href"])) if base_node else final
+        document_base = final
+        if base_node:
+            try:
+                document_base = urljoin(final, str(base_node["href"]))
+            except ValueError:
+                result.issues.append({"kind": "invalid_base_url", "severity": "warning"})
         canonicals = soup.find_all("link", rel=lambda rel: rel and "canonical" in rel.lower().split())
         if canonicals:
-            result.canonical = urljoin(document_base, str(canonicals[0].get("href", "")))
+            try:
+                result.canonical = urljoin(document_base, str(canonicals[0].get("href", "")))
+            except ValueError:
+                result.issues.append({"kind": "invalid_canonical_url", "severity": "warning"})
         if len(canonicals) > 1:
             result.issues.append({"kind": "multiple_canonicals", "severity": "warning"})
         directives = [headers.get("x-robots-tag", "")]
@@ -189,7 +225,15 @@ class Crawler:
         result.indexability = "blocked" if noindex else "eligible"
         for anchor in soup.find_all("a", href=True):
             try:
-                link = self._validate(urljoin(document_base, anchor["href"]))
+                target = urljoin(document_base, anchor["href"])
+            except ValueError:
+                # One malformed hyperlink must not discard the valid page or
+                # every subsequent link. Cross-origin links remain skipped.
+                if not any(issue["kind"] == "invalid_link_url" for issue in result.issues):
+                    result.issues.append({"kind": "invalid_link_url", "severity": "warning"})
+                continue
+            try:
+                link = self._validate(target)
             except UnsafeURL:
                 continue
             if link not in result.links:
@@ -199,7 +243,7 @@ class Crawler:
                 break
         for node in soup.find_all("script", attrs={"type": "application/ld+json"})[:50]:
             try:
-                result.schema.append(json.loads(node.string or node.get_text()))
+                result.schema.append(_schema_json(node.string or node.get_text()))
             except (ValueError, RecursionError):
                 result.issues.append({"kind": "invalid_schema_json", "severity": "warning"})
         for node in soup(["script", "style", "noscript"]):
