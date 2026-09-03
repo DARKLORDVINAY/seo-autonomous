@@ -107,12 +107,21 @@ Detailed evidence and limitations:
 [durable deployment package](DURABLE_DEPLOYMENT_PACKAGE.md).
 
 The full local regression finished **861 passed, 8 skipped in 28.62 seconds**;
-Ruff and whitespace validation passed. The eight skips require actual
+Ruff passed. A staged whitespace check reports one terminal blank line in the
+frozen evaluator package; it is retained to preserve the pre-evaluation source
+commitment. The eight skips require actual
 PostgreSQL/container capabilities. An earlier integration run found one test
 ordering issue: Alembic logging configuration disabled the chaos test's logger.
 The test now restores that logger for capture without mocking lease operations.
 PostgreSQL/Compose/restore verification is a separate disposable CI gate; do not
-substitute the local result for it. Updated JUnit configuration retains the
+substitute the local result for it. Its first run passed 864 tests, including the
+actual archive/restore drill, but failed five PostgreSQL chaos setups: the
+metadata `create_all` trigger helper passed an unescaped PL/pgSQL percent sign
+through the raw driver path. The existing Alembic migration path passed. The
+helper now uses SQLAlchemy's dialect-aware text compilation, without changing
+the trigger's guard or the frozen migration. Cleanup also skips Compose when an
+earlier failure prevented creation of the ephemeral CI environment file.
+Updated JUnit configuration retains the
 soak/restore workload properties in a compatible report format.
 
 Independent post-evaluation author review was unavailable because that worker

@@ -134,5 +134,5 @@ jobs:
             artifacts/benchmark-v2-regression/metadata-adjudication.sha256
           if-no-files-found: ignore
       - name: Stop isolated test stack
-        if: always()
+        if: always() && hashFiles('.env') != ''
         run: docker compose down

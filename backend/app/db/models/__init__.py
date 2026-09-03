@@ -12,7 +12,7 @@ from uuid import uuid4
 from sqlalchemy import (
     JSON, Boolean, CheckConstraint, Date, DateTime, Float, ForeignKey,
     ForeignKeyConstraint, Index, Integer, MetaData, String, Text,
-    UniqueConstraint, event, inspect,
+    UniqueConstraint, event, inspect, text,
 )
 from sqlalchemy.orm import DeclarativeBase, Mapped, Session, mapped_column
 from sqlalchemy.types import TypeDecorator
@@ -648,12 +648,15 @@ APPEND_ONLY_TABLES = tuple(sorted(mapper.local_table.name for mapper in Base.reg
 def install_append_only_triggers(connection) -> None:
     """DB enforcement protects bulk SQL too. A DBA can still alter schema/roles."""
     if connection.dialect.name == "postgresql":
-        connection.exec_driver_sql("""
+        # The PL/pgSQL format marker is a literal percent sign, not a psycopg
+        # placeholder. SQLAlchemy text compilation escapes it for the dialect;
+        # raw driver SQL with an empty parameter mapping does not.
+        connection.execute(text("""
             CREATE OR REPLACE FUNCTION seo_reject_audit_mutation() RETURNS trigger
             LANGUAGE plpgsql AS $$ BEGIN
                 RAISE EXCEPTION 'append-only canonical record: %', TG_TABLE_NAME;
             END $$;
-        """)
+        """))
         for table in APPEND_ONLY_TABLES:
             connection.exec_driver_sql(f'DROP TRIGGER IF EXISTS "{table}_immutable" ON "{table}"')
             connection.exec_driver_sql(f'CREATE TRIGGER "{table}_immutable" BEFORE UPDATE OR DELETE ON "{table}" FOR EACH ROW EXECUTE FUNCTION seo_reject_audit_mutation()')

@@ -152,3 +152,21 @@ def test_verification_overlay_is_literal_not_environment_selected():
                      'restart: "no"', 'pull_policy: never'):
         assert expected in overlay
     assert "${AUTONOMY_LEVEL" not in overlay and "${PRODUCTION_ENABLED" not in overlay
+
+
+def test_postgresql_metadata_trigger_uses_dialect_escaped_percent():
+    from sqlalchemy.dialects.postgresql.psycopg import dialect
+    from sqlalchemy.sql.elements import TextClause
+    statements = []
+    class Connection:
+        dialect = SimpleNamespace(name="postgresql")
+        def execute(self, statement):
+            assert isinstance(statement, TextClause)
+            compiled = str(statement.compile(dialect=dialect()))
+            assert "append-only canonical record: %%" in compiled
+            statements.append(compiled)
+        def exec_driver_sql(self, statement):
+            assert "RAISE EXCEPTION" not in statement
+            statements.append(statement)
+    m.install_append_only_triggers(Connection())
+    assert len(statements) == 1 + 4 * len(m.APPEND_ONLY_TABLES)
