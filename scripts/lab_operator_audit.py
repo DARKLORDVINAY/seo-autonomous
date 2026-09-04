@@ -22,7 +22,8 @@ from scripts.bootstrap import migrate
 
 ROOT = Path(__file__).resolve().parents[1]
 REPOSITORIES = frozenset({"DARKLORDVINAY/seo-autonomous", "DARKLORDVINAY/seo-test-lab"})
-OPERATIONS = frozenset({"create_file", "create_branch", "create_tree", "create_commit", "update_ref", "create_pull_request", "merge_pull_request"})
+OPERATIONS = frozenset({"create_file", "create_branch", "create_tree", "create_commit", "update_ref",
+                        "create_pull_request", "update_pull_request", "merge_pull_request"})
 
 
 def checked_site(session, site_id):

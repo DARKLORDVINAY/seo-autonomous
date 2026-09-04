@@ -60,11 +60,6 @@ jobs:
         env:
           TEST_POSTGRES_CONTAINER: ${{ job.services.postgres.id }}
         run: python -m pytest -q --junitxml=artifacts/test-results.xml
-      - name: Replay frozen-protocol v2 regression (never autonomy graduation)
-        run: |
-          python scripts/benchmark_v2.py predict --split holdout --output artifacts/benchmark-v2-regression
-          python scripts/benchmark_v2.py evaluate --output artifacts/benchmark-v2-regression > artifacts/benchmark-v2-first-evaluation-log.json
-          python -m benchmarks.adjudication_v2 --output artifacts/benchmark-v2-regression
       - name: Build labelled static lab and run evaluator-isolated shadow benchmark on PostgreSQL
         run: |
           python test_lab/build.py --fixture --base-url https://example.test --output artifacts/test-lab-site
@@ -126,12 +121,6 @@ jobs:
             artifacts/test-lab-*.png
             artifacts/test-lab-*.json
             artifacts/test-results.xml
-            artifacts/benchmark-v2-regression/commitment.json
-            artifacts/benchmark-v2-regression/predictions.json
-            artifacts/benchmark-v2-regression/evaluation.json
-            artifacts/benchmark-v2-regression/evaluation.sha256
-            artifacts/benchmark-v2-regression/metadata-adjudication.json
-            artifacts/benchmark-v2-regression/metadata-adjudication.sha256
           if-no-files-found: ignore
       - name: Stop isolated test stack
         if: always() && hashFiles('.env') != ''

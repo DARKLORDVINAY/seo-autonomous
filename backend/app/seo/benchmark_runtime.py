@@ -60,27 +60,54 @@ def _validate_case(value: Any) -> tuple[list[CrawlResult], AnalysisContext, list
 
 def _coverage(crawls: list[CrawlResult], ctx: AnalysisContext) -> bool:
     inventory = {normalise_url(url, ctx.site_url) for url in ctx.inventory_urls}
-    observed = {normalise_url(crawl.url, ctx.site_url) for crawl in crawls}
+    observed = {normalise_url(crawl.url, ctx.site_url): crawl for crawl in crawls}
+    intended = {normalise_url(url, ctx.site_url) for url in ctx.intended_indexable_urls}
+    unexpected_live = any(
+        url not in inventory and crawl.status_code == 200
+        and normalise_url(crawl.final_url, ctx.site_url) == url
+        for url, crawl in observed.items()
+    )
+
+    def sufficient(crawl: CrawlResult, required_indexable: bool) -> bool:
+        if not required_indexable:
+            # A trusted non-indexable/private inventory item does not require
+            # fetching content that robots intentionally protects. Only an
+            # explicit block or a terminal HTTP observation is sufficient.
+            if crawl.crawlable is False and not any(
+                issue.get("kind") not in {"robots_blocked"} for issue in crawl.issues
+            ):
+                return True
+            return crawl.status_code in {200, 404, 410} and not crawl.issues
+        return (
+            crawl.status_code in {200, 404, 410}
+            and not crawl.issues
+            and (crawl.status_code != 200 or (
+                crawl.crawlable is True and crawl.indexability != "unknown"
+                and (crawl.main_content_observed or bool(crawl.main_text))
+            ))
+        )
+
     return bool(
-        inventory and "" not in inventory and inventory <= observed
+        inventory and "" not in inventory and len(observed) == len(crawls)
+        and inventory <= observed.keys() and not unexpected_live
         and ctx.inventory_complete and ctx.crawl_coverage_complete and ctx.sitemap_complete
-        and all(crawl.status_code in {200, 404, 410}
-                # Unknown/new parser flags are not silently classified as
-                # complete evidence. They require review, even if no current
-                # detector understands their meaning.
-                and not crawl.issues
-                and (crawl.status_code != 200 or (
-                    crawl.crawlable is True and crawl.indexability != "unknown"
-                    and (crawl.main_content_observed or bool(crawl.main_text))
-                )) for crawl in crawls)
+        # Unknown/new parser flags are not silently classified as complete
+        # evidence. Trusted intent can narrow the content-observation scope,
+        # but untrusted page text cannot.
+        and all(sufficient(observed[url], not intended or url in intended) for url in inventory)
     )
 
 
 def _related(candidate: dict[str, Any]) -> list[str]:
+    if candidate["kind"] == "broken_internal_link":
+        # Broken-link identity is the observed source->destination edge.
+        return sorted({evidence["target_url"] for evidence in candidate["evidence"]
+                       if isinstance(evidence.get("target_url"), str)})
     # A canonical target is context, not another affected page. Only genuine
     # grouped findings expose several affected URLs to the evaluator.
     if candidate["kind"] not in {
-        "duplicate_title", "duplicate_meta_description", "potential_topic_overlap", "cannibalisation_hypothesis",
+        "canonical_cycle", "duplicate_title", "duplicate_meta_description",
+        "potential_topic_overlap", "cannibalisation_hypothesis",
     }:
         return []
     urls = set()

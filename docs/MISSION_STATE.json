@@ -1,13 +1,13 @@
 {
   "schema_version": 1,
   "current_verification_checkpoint": {
-    "date": "2026-09-03",
-    "scope": "verification_only_no_account_or_hosting_actions",
+    "date": "2026-09-04",
+    "scope": "detector_development_only_no_account_hosting_public_site_or_autonomy_actions",
     "autonomy_level": 1,
     "production_enabled": false,
     "production_write_budget": 0,
     "paid_api_calls": 0,
-    "local_tests": {"passed": 861, "failed": 0, "skipped_postgres": 8},
+    "local_tests": {"passed": 875, "failed": 0, "skipped_postgres": 8},
     "holdout_cases": 132,
     "holdout_families": 44,
     "holdout_issue_units": 108,
@@ -18,24 +18,42 @@
     "holdout_no_action_controls": 54,
     "engineering_benchmark_gate_passed": false,
     "level_2_eligible": false,
-    "report": "docs/VERIFICATION_V2_REPORT.md",
+    "report": "docs/DETECTOR_DEVELOPMENT_V3.md",
     "postgres_compose_restore_gate": "passed_in_disposable_source_CI_not_durable_host",
     "source_ci": {
-      "run_id": 33757762485,
-      "tested_code_commit": "46bfb451fb667a245859b5780bcec828dd3756ec",
-      "url": "https://github.com/DARKLORDVINAY/seo-autonomous/actions/runs/33757762485",
-      "passed": 870,
+      "run_id": 33821865522,
+      "tested_code_commit": "93850f80b5c5cbe5b958ff93ed7786af2a4a4272",
+      "url": "https://github.com/DARKLORDVINAY/seo-autonomous/actions/runs/33821865522",
+      "passed": 883,
       "failed": 0,
       "skipped": 0,
-      "duration_seconds": 116.68,
+      "duration_seconds": 49.59,
       "actual_postgres_chaos_and_restore": true,
       "fixed_zero_compose_package": true,
       "local_fixture_rendered_pages": 26,
       "live_public_release_changed": false
     },
     "first_ci_failure_preserved": "864 passed; five PostgreSQL setup errors revealed raw-driver percent escaping in trigger helper; corrected and retested",
-    "holdout_status": "first_run_frozen_and_disclosed_no_detector_tuning",
-    "next_human_required_action": "When available, explicitly end verification-only freeze and select/authorize an existing durable PostgreSQL/container target; nothing requested now"
+    "holdout_status": "failed_first_run_frozen_disclosed_and_retired; not used for v3 tuning; one inherited first-PR CI replay excluded and routine replay removed",
+    "detector_development_v3": {
+      "pull_request": "https://github.com/DARKLORDVINAY/seo-autonomous/pull/6",
+      "runtime_commit": "93850f80b5c5cbe5b958ff93ed7786af2a4a4272",
+      "runtime_tree": "f18efbdac2be66f8dd171cfda893b9c21e608ad6",
+      "pull_request_state": "open_unmerged",
+      "training_split_cases": 48,
+      "issue_units": 36,
+      "true_positives": 36,
+      "false_positives": 0,
+      "false_negatives": 0,
+      "correct_no_action": 18,
+      "no_action_controls": 18,
+      "coverage_overclaims": 0,
+      "false_no_action": 0,
+      "engineering_benchmark_gate_passed": false,
+      "level_2_eligible": false,
+      "evidence_class": "development_training_feedback_not_blind_validation"
+    },
+    "next_human_required_action": "Explicitly approve or decline merge of source PR 6. After code freeze, a genuinely independent author must create a new blind holdout; durable hosting and Google API connection remain later account actions."
   },
   "objective": "Maximise incremental qualified organic conversion value",
   "success_criteria": [
@@ -87,12 +105,14 @@
     "google_backend_api_connected": false
   },
   "unknowns": [
+    "fresh independently authored detector-v3 holdout performance",
     "durable PostgreSQL/container host",
     "Search Console API read identity and property access",
     "GA4 saved default-value discrepancy and actual event receipt; owner account work frozen",
     "live model credentials and explicit price budget"
   ],
   "blockers": [
+    "The retired v2 holdout failed and the perfect v3 development score is training evidence only; no fresh independent competence result exists",
     "No durable PostgreSQL/container host is connected; CI services are disposable",
     "GSC browser ownership and the dedicated GA4 stream are verified; backend Google API credentials remain unconnected",
     "The opt-in analytics release is deployed and key-event registration was observed; a default-value discrepancy and actual event receipt remain unresolved; account actions are frozen",
@@ -101,10 +121,11 @@
   ],
   "critical_path": [
     "Preserve frozen failed holdout v2 and all completed public release evidence",
-    "Source hardening verified against disposable PostgreSQL, Compose, backup/restore and browser gates; do not repeat completed gates without a relevant change",
+    "Review source PR 6 after its corrected complete disposable CI gate passed; do not merge without explicit approval",
+    "After code freeze, obtain a genuinely independent newly authored blind holdout; do not reuse or relabel v2",
     "Use the latest canonical SQLite/evidence recovery checkpoint; retain first failures and the failed frozen holdout",
-    "Stop low-marginal-value test expansion; do not tune on disclosed holdout",
-    "Future human gate only: explicitly lift verification freeze and authorize an existing durable backend target; no account action now"
+    "Stop further disclosed-corpus tuning; Level 1 and zero write/spend budgets remain fixed",
+    "Future human gate only after independent competence evidence: authorize an existing durable backend target; no account action now"
   ],
   "budget": {
     "max_build_workers": 5,
@@ -143,9 +164,13 @@
     {
       "id": "D6",
       "decision": "Treat the public structural benchmark and release restore as engineering evidence only; retain Level 1 and zero autonomous write budget. Do not count disposable CI infrastructure as the durable control plane."
+    },
+    {
+      "id": "D7",
+      "decision": "Use the disclosed v2 development split only as training feedback for detector v3, preserve the failed v2 holdout as the latest independent result, and require a newly authored blind holdout before any competence or autonomy claim."
     }
   ],
-  "status": "verification_v2_software_verified_benchmark_failed_frozen",
+  "status": "detector_development_v3_pr_ci_passed_merge_and_fresh_blind_pending",
   "verified_checkpoint": {
     "checked_at": "2026-09-01T23:42:06.157616+00:00",
     "tests": 633,
@@ -263,9 +288,11 @@
     "independently reviewed public A-to-B-to-A rollback",
     "GSC URL-prefix ownership verified in the owner's browser",
     "dedicated GA4 stream and persisted privacy settings verified",
-    "independently reviewed consent-gated GA4 static release deployed"
+    "independently reviewed consent-gated GA4 static release deployed",
+    "detector-development v3 source-to-destination, canonical-cycle, robots-intent, soft-404, sitemap and graph evidence gates",
+    "48-case development split training diagnostic reached 36 TP, 0 FP/FN and 18/18 NO-ACTION controls; explicitly not blind evidence"
   ],
-  "updated_at": "2026-09-02T21:12:46.511Z",
+  "updated_at": "2026-09-04T00:31:35Z",
   "phase_status": {
     "0": "documentation and capability checks complete",
     "1": "foundation and actual PostgreSQL/container CI passed; durable deployment pending",
@@ -273,8 +300,8 @@
     "3": "public structural benchmark passed with 13TP, 0FP/FN and 13 correct NO-ACTION decisions",
     "4": "bounded deterministic shadow packets verified; live model reasoning not executed",
     "5": "manual public Git title change and observed rollback passed; autonomous execution disabled",
-    "6": "633 tests passed including actual PostgreSQL privileges and leases; browser and public rollback gates passed",
-    "7": "public structural shadow benchmark passed; continuous durable scheduling and real outcome calibration pending",
+    "6": "detector v3 passed corrected CI with 883 tests on PostgreSQL plus rollback, fixed-zero Compose and browser gates; PR merge pending approval",
+    "7": "Level 1 shadow remains active; fresh independent detector-v3 holdout, continuous durable scheduling and real outcome calibration pending",
     "8": "disabled; no earned categories or automatic graduation"
   },
   "target": {
@@ -369,6 +396,12 @@
       "kind": "artifact_transfer",
       "status": "limited",
       "effect": "Connected download returned a signed artifact URL, but workspace retrieval returned HTTP 403. Full CI SQL/JSON/screenshot bundles remain in GitHub artifacts; only verified API log summaries are copied here."
+    },
+    {
+      "kind": "retired_holdout_routine_ci_replay",
+      "status": "reproduced_and_fixed_on_detector_v3_pr",
+      "effect": "The first detector-v3 PR run inherited a workflow step that regenerated/evaluated the disclosed retired v2 holdout. The result is excluded from competence evidence. Routine execution and artifact upload were removed and guarded by a regression test.",
+      "guardrail_weakened": false
     }
   ]
 }

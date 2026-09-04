@@ -91,6 +91,32 @@ def _same_site(url: str, site_url: str | None) -> bool:
     return urlsplit(url).netloc == urlsplit(normalise_url(site_url)).netloc
 
 
+def _normalised_intended_urls(context: AnalysisContext) -> set[str]:
+    """Return only trusted caller-declared indexing intent.
+
+    Page markup is untrusted observation data and cannot add itself to this set.
+    An empty set means intent was not supplied, not that no page is intended.
+    """
+    return {
+        url
+        for value in context.intended_indexable_urls
+        if (url := normalise_url(value, context.site_url)) and _same_site(url, context.site_url)
+    }
+
+
+def _normalised_purposes(context: AnalysisContext) -> dict[str, str]:
+    return {
+        url: re.sub(r"[^a-z0-9]+", "_", purpose.casefold()).strip("_")
+        for value, purpose in context.page_purposes.items()
+        if (url := normalise_url(value, context.site_url))
+    }
+
+
+def _purpose_has_any(purpose: str, markers: set[str]) -> bool:
+    tokens = set(filter(None, purpose.split("_")))
+    return bool(tokens & markers or any(marker in purpose for marker in markers if "_" in marker))
+
+
 def calculate_opportunity_score(
     expected_impact: float,
     confidence: float,
@@ -411,31 +437,49 @@ def detect_orphan_pages(
     inventory = {url for url in inventory if _same_site(url, ctx.site_url)}
     if not inventory:
         return []
+    intended = _normalised_intended_urls(ctx)
+    purposes = _normalised_purposes(ctx)
+    graph_inventory = inventory & intended if intended else inventory
     incoming: dict[str, set[str]] = defaultdict(set)
-    crawled_sources: set[str] = set()
+    observed_requests: dict[str, CrawlResult] = {}
     for crawl in crawls:
+        requested = normalise_url(crawl.url, ctx.site_url)
+        if requested and _same_site(requested, ctx.site_url):
+            observed_requests[requested] = crawl
         source = normalise_url(crawl.final_url or crawl.url, ctx.site_url)
         if not source or not _same_site(source, ctx.site_url) or crawl.status_code != 200:
             continue
-        crawled_sources.add(source)
         for link in crawl.links:
             target = normalise_url(link, source)
-            if target and target != source:
+            if target and target != source and _same_site(target, ctx.site_url):
                 incoming[target].add(source)
-    covered = (ctx.inventory_complete and ctx.crawl_coverage_complete and inventory <= crawled_sources
-               and not any(_incomplete_graph_observation(crawl) for crawl in crawls))
+    covered = (bool(graph_inventory) and ctx.inventory_complete and ctx.crawl_coverage_complete
+               and graph_inventory <= observed_requests.keys()
+               and not any(_incomplete_graph_observation(observed_requests[url]) for url in graph_inventory))
     entrypoints = {normalise_url(url, ctx.site_url) for url in ctx.entrypoint_urls}
     if ctx.site_url:
         entrypoints.add(normalise_url(ctx.site_url))
     found = []
     for page in sorted(inventory - entrypoints):
+        observation = observed_requests.get(page)
+        purpose = purposes.get(page, "")
+        # Redirect aliases, unavailable resources, intentionally excluded URLs,
+        # and non-indexable utility/private pages are not orphan-page defects.
+        if (not observation or observation.status_code != 200
+                or normalise_url(observation.final_url or observation.url, ctx.site_url) != page
+                or observation.indexability == "blocked"
+                or (intended and page not in intended)
+                or _purpose_has_any(purpose, {"redirect", "retired", "private", "internal_search"})):
+            continue
         if incoming.get(page):
             continue
         found.append(_candidate("orphan_page" if covered else "potential_orphan_page", page,
             "No incoming link was found in the inspected internal HTML link graph.",
             [{"source": "crawler_inventory", "claim_type": "FACT", "incoming_observed": 0,
               "inventory_complete": ctx.inventory_complete, "crawl_coverage_complete": ctx.crawl_coverage_complete,
-              "observed_inventory_coverage": len(inventory & crawled_sources) / len(inventory), "full_graph_observed": covered}], ctx,
+              "observed_inventory_coverage": len(inventory & observed_requests.keys()) / len(inventory),
+              "owner_intends_indexable": page in intended if intended else None,
+              "full_graph_observed": covered}], ctx,
             confidence=0.85 if covered else 0.3, flags=[] if covered else ["incomplete_graph_cannot_prove_orphan"],
             alternatives=["Links in JavaScript-rendered navigation", "Uncrawled or blocked pages", "Intentionally isolated landing page"]))
     return found
@@ -447,9 +491,13 @@ def detect_broken_links(crawls: list[CrawlResult], context: AnalysisContext | di
     for crawl in crawls:
         if crawl.status_code != 200:
             continue
+        source = normalise_url(crawl.final_url or crawl.url, ctx.site_url)
+        if not source or not _same_site(source, ctx.site_url):
+            continue
         for link in crawl.links:
-            target = normalise_url(link, crawl.final_url or crawl.url)
-            incoming[target].add(crawl.url)
+            target = normalise_url(link, source)
+            if target and _same_site(target, ctx.site_url):
+                incoming[target].add(source)
     found = []
     seen: set[str] = set()
     for crawl in crawls:
@@ -461,12 +509,24 @@ def detect_broken_links(crawls: list[CrawlResult], context: AnalysisContext | di
         if is_missing and not incoming.get(url):
             # A missing URL in a sitemap is not evidence of a broken HTML link.
             continue
-        found.append(_candidate("broken_link" if is_missing else "server_error", url,
-            f"An HTTP {crawl.status_code} response was observed; review affected navigation and availability.",
-            [{"source": "crawler", "claim_type": "FACT", "status_code": crawl.status_code,
-              "observed_at": crawl.fetched_at.isoformat(), "incoming_sources": sorted(incoming.get(url, set()))}], ctx,
-            impact=1 + math.log1p(len(incoming.get(url, set()))), confidence=0.9 if is_missing else 0.65,
-            flags=["verify_before_change"], alternatives=["Transient failure", "Intentional removal", "Crawler-specific response"]))
+        if is_missing:
+            # The actionable observation grain is the source->destination edge,
+            # not the unavailable destination in isolation.
+            for source in sorted(incoming[url]):
+                found.append(_candidate("broken_internal_link", source,
+                    f"An internal link points to a URL that returned HTTP {crawl.status_code}.",
+                    [{"source": "crawler", "claim_type": "FACT", "status_code": crawl.status_code,
+                      "source_url": source, "target_url": url,
+                      "observed_at": crawl.fetched_at.isoformat()}], ctx,
+                    impact=1.0, confidence=0.9, flags=["verify_before_change"],
+                    alternatives=["Transient response", "Intentional removal without navigation cleanup", "Crawler-specific response"]))
+        else:
+            found.append(_candidate("server_error", url,
+                f"An HTTP {crawl.status_code} response was observed; review availability.",
+                [{"source": "crawler", "claim_type": "FACT", "status_code": crawl.status_code,
+                  "observed_at": crawl.fetched_at.isoformat(), "incoming_sources": sorted(incoming.get(url, set()))}], ctx,
+                impact=1 + math.log1p(len(incoming.get(url, set()))), confidence=0.65,
+                flags=["verify_before_change"], alternatives=["Transient failure", "Maintenance", "Crawler-specific response"]))
     return found
 
 
@@ -489,6 +549,7 @@ def detect_redirect_chains(crawls: list[CrawlResult], context: AnalysisContext |
 
 def detect_duplicate_metadata(crawls: list[CrawlResult], context: AnalysisContext | dict[str, Any] | None = None) -> list[OpportunityCandidate]:
     ctx = _context(context)
+    intended = _normalised_intended_urls(ctx)
     found = []
     for field in ("title", "meta_description"):
         groups: dict[str, dict[str, CrawlResult]] = defaultdict(dict)
@@ -497,7 +558,8 @@ def detect_duplicate_metadata(crawls: list[CrawlResult], context: AnalysisContex
                 continue
             value = " ".join(getattr(crawl, field).split()).casefold()
             page = normalise_url(crawl.final_url or crawl.url, ctx.site_url)
-            if value and page:
+            if (value and page and crawl.indexability != "blocked"
+                    and (not intended or page in intended)):
                 groups[value][page] = crawl
         for value, pages in sorted(groups.items()):
             if len(pages) < 2:
@@ -515,17 +577,27 @@ def detect_duplicate_metadata(crawls: list[CrawlResult], context: AnalysisContex
 
 def detect_indexability(crawls: list[CrawlResult], context: AnalysisContext | dict[str, Any] | None = None) -> list[OpportunityCandidate]:
     ctx = _context(context)
+    intended = _normalised_intended_urls(ctx)
     found = []
     for crawl in crawls:
-        external_canonical = bool(crawl.canonical and urlsplit(normalise_url(crawl.canonical, crawl.url)).netloc != urlsplit(crawl.url).netloc)
-        if (crawl.status_code != 200 or crawl.indexability != "blocked") and not external_canonical:
+        url = normalise_url(crawl.url, ctx.site_url)
+        if not url or (intended and url not in intended):
             continue
-        found.append(_candidate("indexability_review", crawl.url, "Observed indexability directives or canonical target warrant intent verification.",
+        robots_blocked = crawl.crawlable is False or any(
+            issue.get("kind") == "robots_blocked" for issue in crawl.issues
+        )
+        noindex_observed = crawl.status_code == 200 and crawl.indexability == "blocked"
+        if not noindex_observed and not robots_blocked:
+            continue
+        found.append(_candidate("indexability_review", url, "Observed crawl or indexability controls conflict with declared public indexing intent.",
             [{"source": "crawler", "claim_type": "FACT", "indexability": crawl.indexability,
               "robots_directives": crawl.robots_directives, "canonical": crawl.canonical,
-              "cross_host_canonical": external_canonical, "actual_google_index_status": "unknown"}], ctx,
-            confidence=0.65, risk=0.7, flags=["blocked_may_be_intentional", "actual_index_status_unknown"],
-            alternatives=["Intentionally excluded page", "Syndication", "Staging or account page"]))
+              "crawlable": crawl.crawlable, "robots_blocked": robots_blocked,
+              "owner_intends_indexable": url in intended if intended else None,
+              "actual_google_index_status": "unknown"}], ctx,
+            confidence=0.65 if noindex_observed else 0.5, risk=0.7,
+            flags=["actual_index_status_unknown", "owner_intent_required"],
+            alternatives=["Stale owner intent", "Deliberate temporary exclusion", "Crawler-specific robots evaluation"]))
     return found
 
 
@@ -538,8 +610,15 @@ def _incomplete_graph_observation(crawl: CrawlResult) -> bool:
 def _inventory_graph(crawls: list[CrawlResult], ctx: AnalysisContext):
     inventory = {normalise_url(url, ctx.site_url) for url in ctx.inventory_urls}
     inventory = {url for url in inventory if url and _same_site(url, ctx.site_url)}
+    intended = _normalised_intended_urls(ctx)
+    if intended:
+        inventory &= intended
     pages, incoming = {}, defaultdict(set)
+    observations: dict[str, CrawlResult] = {}
     for crawl in crawls:
+        requested = normalise_url(crawl.url, ctx.site_url)
+        if requested:
+            observations[requested] = crawl
         source = normalise_url(crawl.final_url or crawl.url, ctx.site_url)
         if not source or not _same_site(source, ctx.site_url) or crawl.status_code != 200:
             continue
@@ -548,8 +627,16 @@ def _inventory_graph(crawls: list[CrawlResult], ctx: AnalysisContext):
             target = normalise_url(link, source)
             if target and target != source and _same_site(target, ctx.site_url):
                 incoming[target].add(source)
+    redirect_alias_touches_inventory = any(
+        crawl.redirect_chain
+        and normalise_url(crawl.final_url or crawl.url, ctx.site_url) in inventory
+        and normalise_url(crawl.url, ctx.site_url) != normalise_url(crawl.final_url or crawl.url, ctx.site_url)
+        for crawl in crawls
+    )
     complete = bool(inventory and ctx.inventory_complete and ctx.crawl_coverage_complete and inventory <= pages.keys()
-                    and not any(_incomplete_graph_observation(crawl) for crawl in crawls))
+                    and inventory <= observations.keys()
+                    and not redirect_alias_touches_inventory
+                    and not any(_incomplete_graph_observation(observations[url]) for url in inventory))
     return inventory, pages, incoming, complete
 
 
@@ -563,9 +650,16 @@ def detect_weak_internal_links(crawls: list[CrawlResult], context: AnalysisConte
     inventory, pages, incoming, complete = _inventory_graph(crawls, ctx)
     if not complete:
         return []
+    intended = _normalised_intended_urls(ctx)
+    purposes = _normalised_purposes(ctx)
     entrypoints = {normalise_url(url, ctx.site_url) for url in [*ctx.entrypoint_urls, ctx.site_url or ""]}
     found = []
     for url in sorted(inventory - entrypoints):
+        purpose = purposes.get(url, "")
+        if (url not in pages or pages[url].indexability == "blocked"
+                or (intended and url not in intended)
+                or _purpose_has_any(purpose, {"small_collection", "standalone", "single_exercise"})):
+            continue
         if len(incoming.get(url, ())) != 1:
             continue
         found.append(_candidate("weak_internal_links", url,
@@ -577,26 +671,72 @@ def detect_weak_internal_links(crawls: list[CrawlResult], context: AnalysisConte
     return found
 
 
+def _canonical_cycles(crawls: list[CrawlResult], ctx: AnalysisContext) -> list[list[str]]:
+    """Return deterministic cycles in the observed one-canonical-per-page graph."""
+    edges: dict[str, str] = {}
+    for crawl in crawls:
+        source = normalise_url(crawl.url, ctx.site_url)
+        target = normalise_url(crawl.canonical or "", source) if crawl.canonical else ""
+        if (crawl.status_code == 200 and source and target and source != target
+                and not crawl.redirect_chain and _same_site(source, ctx.site_url)
+                and _same_site(target, ctx.site_url)):
+            edges[source] = target
+    cycles: set[tuple[str, ...]] = set()
+    completed: set[str] = set()
+    for start in sorted(edges):
+        path: list[str] = []
+        positions: dict[str, int] = {}
+        node = start
+        while node in edges and node not in completed:
+            if node in positions:
+                cycle = path[positions[node]:]
+                pivot = min(range(len(cycle)), key=cycle.__getitem__)
+                cycles.add(tuple(cycle[pivot:] + cycle[:pivot]))
+                break
+            positions[node] = len(path)
+            path.append(node)
+            node = edges[node]
+        completed.update(path)
+    return [list(cycle) for cycle in sorted(cycles)]
+
+
+def detect_canonical_cycles(crawls: list[CrawlResult], context: AnalysisContext | dict[str, Any] | None = None) -> list[OpportunityCandidate]:
+    ctx = _context(context)
+    found = []
+    for pages in _canonical_cycles(crawls, ctx):
+        found.append(_candidate("canonical_cycle", pages[0],
+            "Observed canonical declarations form a directed cycle with no stable representative URL.",
+            [{"source": "crawler", "claim_type": "FACT", "pages": pages,
+              "cycle_edges": [{"source": page, "target": pages[(index + 1) % len(pages)]}
+                              for index, page in enumerate(pages)],
+              "actual_google_canonical": "unknown"}], ctx,
+            confidence=0.95, risk=0.9,
+            flags=["canonical_change_requires_human_review"],
+            alternatives=["Inconsistent deployment snapshots", "Crawler-specific markup variation"]))
+    return found
+
+
 def detect_canonical_mismatch(crawls: list[CrawlResult], context: AnalysisContext | dict[str, Any] | None = None) -> list[OpportunityCandidate]:
-    """Observe same-origin non-self canonicals without assuming they are errors."""
+    """Observe unexplained non-self canonicals without assuming they are errors."""
     ctx = _context(context)
     pages = {normalise_url(c.url, ctx.site_url): c for c in crawls}
-    intended = {normalise_url(url, ctx.site_url) for url in ctx.intended_indexable_urls}
+    intended = _normalised_intended_urls(ctx)
+    cycle_members = {page for cycle in _canonical_cycles(crawls, ctx) for page in cycle}
     found, seen = [], set()
     for crawl in crawls:
-        source = normalise_url(crawl.final_url or crawl.url, ctx.site_url)
+        source = normalise_url(crawl.url, ctx.site_url)
         target = normalise_url(crawl.canonical or "", source) if crawl.canonical else ""
-        if crawl.status_code != 200 or not source or not target or source == target or source in seen:
+        if (crawl.status_code != 200 or not source or not target or source == target or source in seen
+                or source in cycle_members or crawl.redirect_chain or (intended and source not in intended)):
             continue
-        if urlsplit(source).netloc != urlsplit(target).netloc:
-            continue  # Cross-origin canonicals remain in indexability review.
         seen.add(source)
         target_page = pages.get(target)
         found.append(_candidate("canonical_mismatch", source,
-            "This page declares a different same-site canonical URL; compare owner intent and content before proposing any change.",
+            "This owner-intended page declares a different canonical URL; compare intent and content before proposing any change.",
             [{"source": "crawler", "claim_type": "FACT", "canonical_target": target,
               "pages": [source, target], "target_status": target_page.status_code if target_page else None,
-              "owner_intends_indexable": source in intended, "canonical_error_proven": False,
+              "cross_host_canonical": urlsplit(source).netloc != urlsplit(target).netloc,
+              "owner_intends_indexable": source in intended if intended else None, "canonical_error_proven": False,
               "actual_google_canonical": "unknown"}], ctx, confidence=0.65, risk=0.9,
             flags=["canonical_change_requires_human_review", "nonself_canonical_can_be_intentional"],
             alternatives=["Intentional duplicate consolidation", "Print or parameter variant", "Migration still in progress"]))
@@ -610,14 +750,20 @@ def detect_thin_content(crawls: list[CrawlResult], context: AnalysisContext | di
     Purpose comes only from the caller's trusted inventory, not a page instruction.
     """
     ctx = _context(context)
-    purposes = {normalise_url(url, ctx.site_url): purpose for url, purpose in ctx.page_purposes.items()}
+    purposes = _normalised_purposes(ctx)
+    intended = _normalised_intended_urls(ctx)
     found = []
     for crawl in crawls:
         url = normalise_url(crawl.final_url or crawl.url, ctx.site_url)
-        if crawl.status_code != 200 or not (crawl.main_content_observed or crawl.main_text):
+        requested = normalise_url(crawl.url, ctx.site_url)
+        if (crawl.status_code != 200 or not crawl.main_content_observed
+                or requested != url or (intended and url not in intended)):
             continue
         purpose = purposes.get(url, "unknown")
-        if purpose in {"utility", "exercise", "hub", "home"}:
+        if _purpose_has_any(purpose, {
+            "utility", "exercise", "hub", "home", "tool", "calculator", "converter",
+            "definition", "dictionary", "glossary", "short_answer", "search_results",
+        }):
             continue
         if purpose == "unknown" and crawl.has_interactive_content:
             continue
@@ -634,6 +780,50 @@ def detect_thin_content(crawls: list[CrawlResult], context: AnalysisContext | di
     return found
 
 
+def detect_soft_404(crawls: list[CrawlResult], context: AnalysisContext | dict[str, Any] | None = None) -> list[OpportunityCandidate]:
+    """Detect strong missing-resource templates served with a success status.
+
+    This remains a hypothesis about search-engine treatment. Requiring both a
+    missing-page heading and a missing-resource body avoids treating legitimate
+    educational articles about HTTP errors as unavailable pages.
+    """
+    ctx = _context(context)
+    intended = _normalised_intended_urls(ctx)
+    found = []
+    exact_headings = {
+        "404", "404 not found", "not found", "page not found",
+        "document not found", "resource not found",
+    }
+    body_pattern = re.compile(
+        r"\b(?:we|the server)\s+(?:could not|couldn't|cannot|can't)\s+find\b"
+        r"|\brequested\s+(?:page|document|resource)\b.{0,40}\b(?:not found|unavailable|does not exist)\b"
+        r"|\b(?:page|document|resource)\s+(?:was|is)\s+not\s+found\b",
+        flags=re.IGNORECASE,
+    )
+    for crawl in crawls:
+        url = normalise_url(crawl.final_url or crawl.url, ctx.site_url)
+        requested = normalise_url(crawl.url, ctx.site_url)
+        if (crawl.status_code != 200 or not url or not crawl.main_content_observed
+                or requested != url or crawl.indexability == "blocked" or (intended and url not in intended)):
+            continue
+        headings = {
+            " ".join(re.findall(r"[^\W_]+", value.casefold(), flags=re.UNICODE))
+            for value in (crawl.title, crawl.main_heading) if value.strip()
+        }
+        if not (headings & exact_headings) or not body_pattern.search(crawl.main_text):
+            continue
+        found.append(_candidate("soft_404", url,
+            "A strong missing-resource template was observed behind an HTTP 200 response; verify intended content and search-engine handling.",
+            [{"source": "crawler", "claim_type": "INFERENCE", "status_code": 200,
+              "heading_signals": sorted(headings & exact_headings), "main_content_observed": True,
+              "owner_intends_indexable": url in intended if intended else None,
+              "search_engine_soft_404_status": "unknown"}], ctx,
+            confidence=0.75, risk=0.4,
+            flags=["soft_404_is_hypothesis", "verify_rendered_response_and_owner_intent"],
+            alternatives=["A deliberately styled error demonstration", "Temporary application fallback", "Search engine accepts the page as content"]))
+    return found
+
+
 def _content_shingles(text: str, width: int = 4) -> set[tuple[str, ...]]:
     tokens = re.findall(r"[^\W_]+", text.casefold(), flags=re.UNICODE)
     return {tuple(tokens[index:index + width]) for index in range(max(0, len(tokens) - width + 1))}
@@ -646,10 +836,15 @@ def detect_topic_overlap(crawls: list[CrawlResult], context: AnalysisContext | d
     A later independent intent/outcome review can legitimately decide NO-ACTION.
     """
     ctx = _context(context)
+    intended = _normalised_intended_urls(ctx)
     pages = {}
     for crawl in crawls:
         url = normalise_url(crawl.final_url or crawl.url, ctx.site_url)
-        if crawl.status_code == 200 and url and len(crawl.main_text.split()) >= 80:
+        requested = normalise_url(crawl.url, ctx.site_url)
+        canonical = normalise_url(crawl.canonical or "", url) if crawl.canonical else url
+        if (crawl.status_code == 200 and url and requested == url and canonical == url
+                and crawl.indexability != "blocked" and crawl.main_content_observed
+                and (not intended or url in intended) and len(crawl.main_text.split()) >= 80):
             pages[url] = crawl
     shingles = {url: _content_shingles(crawl.main_text) for url, crawl in pages.items()}
     stop = {"a", "an", "and", "at", "by", "for", "from", "in", "is", "of", "on", "or", "the", "to", "with", "your"}
@@ -704,16 +899,19 @@ def detect_sitemap_inconsistencies(crawls: list[CrawlResult], context: AnalysisC
               "in_release_inventory": True, "status_code": 200, "actual_google_index_status": "unknown"}], ctx,
             confidence=0.75, flags=["sitemap_submission_is_optional", "absence_does_not_prove_indexing_problem"],
             alternatives=["Deliberate sitemap selection", "Adequate discovery through existing links"]))
-    for url in sorted(sitemap - inventory):
+    for url in sorted(sitemap):
         crawl = observations.get(url)
-        # An unlisted live page can mean the release inventory is incomplete;
-        # don't call it obsolete without directly observed missing-page evidence.
         if not crawl or crawl.status_code not in {404, 410}:
             continue
-        found.append(_candidate("sitemap_unknown_page", url,
-            "The sitemap includes a URL outside the attested release inventory that returned a missing-page status.",
+        outside_inventory = url not in inventory
+        kind = "sitemap_unknown_page" if outside_inventory else "sitemap_unavailable_url"
+        finding = ("The sitemap includes a URL outside the attested release inventory that returned a missing-page status."
+                   if outside_inventory else
+                   "The sitemap includes an inventoried URL that returned a terminal missing-page status.")
+        found.append(_candidate(kind, url, finding,
             [{"source": "crawler_inventory", "claim_type": "FACT", "listed_in_sitemap": True,
-              "in_release_inventory": False, "status_code": crawl.status_code}], ctx,
+              "in_release_inventory": not outside_inventory, "status_code": crawl.status_code,
+              "owner_intends_indexable": url in intended if intended else None}], ctx,
             confidence=0.9, flags=["verify_deployment_consistency_before_change"],
             alternatives=["Sitemap and content deployed at different times", "Temporary routing failure"]))
     return found
@@ -764,8 +962,10 @@ def analyze(
         + detect_duplicate_metadata(crawls, ctx)
         + detect_indexability(crawls, ctx)
         + detect_weak_internal_links(crawls, ctx)
+        + detect_canonical_cycles(crawls, ctx)
         + detect_canonical_mismatch(crawls, ctx)
         + detect_thin_content(crawls, ctx)
+        + detect_soft_404(crawls, ctx)
         + detect_topic_overlap(crawls, ctx)
         + detect_sitemap_inconsistencies(crawls, ctx)
     )
