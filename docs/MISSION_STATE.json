@@ -21,13 +21,13 @@
     "report": "docs/DETECTOR_DEVELOPMENT_V3.md",
     "postgres_compose_restore_gate": "passed_in_disposable_source_CI_not_durable_host",
     "source_ci": {
-      "run_id": 33761045471,
-      "tested_code_commit": "47c4359f0898129a1739b67917841c64c06690f6",
-      "url": "https://github.com/DARKLORDVINAY/seo-autonomous/actions/runs/33761045471",
-      "passed": 870,
+      "run_id": 33821865522,
+      "tested_code_commit": "93850f80b5c5cbe5b958ff93ed7786af2a4a4272",
+      "url": "https://github.com/DARKLORDVINAY/seo-autonomous/actions/runs/33821865522",
+      "passed": 883,
       "failed": 0,
       "skipped": 0,
-      "duration_seconds": null,
+      "duration_seconds": 49.59,
       "actual_postgres_chaos_and_restore": true,
       "fixed_zero_compose_package": true,
       "local_fixture_rendered_pages": 26,
@@ -36,6 +36,10 @@
     "first_ci_failure_preserved": "864 passed; five PostgreSQL setup errors revealed raw-driver percent escaping in trigger helper; corrected and retested",
     "holdout_status": "failed_first_run_frozen_disclosed_and_retired; not used for v3 tuning; one inherited first-PR CI replay excluded and routine replay removed",
     "detector_development_v3": {
+      "pull_request": "https://github.com/DARKLORDVINAY/seo-autonomous/pull/6",
+      "runtime_commit": "93850f80b5c5cbe5b958ff93ed7786af2a4a4272",
+      "runtime_tree": "f18efbdac2be66f8dd171cfda893b9c21e608ad6",
+      "pull_request_state": "open_unmerged",
       "training_split_cases": 48,
       "issue_units": 36,
       "true_positives": 36,
@@ -49,7 +53,7 @@
       "level_2_eligible": false,
       "evidence_class": "development_training_feedback_not_blind_validation"
     },
-    "next_human_required_action": "None for this checkpoint. After source CI, a genuinely independent author must create a new blind holdout; durable hosting and Google API connection remain later account actions."
+    "next_human_required_action": "Explicitly approve or decline merge of source PR 6. After code freeze, a genuinely independent author must create a new blind holdout; durable hosting and Google API connection remain later account actions."
   },
   "objective": "Maximise incremental qualified organic conversion value",
   "success_criteria": [
@@ -117,7 +121,7 @@
   ],
   "critical_path": [
     "Preserve frozen failed holdout v2 and all completed public release evidence",
-    "Publish detector-development v3 through a reviewed source PR and require its complete disposable CI gate",
+    "Review source PR 6 after its corrected complete disposable CI gate passed; do not merge without explicit approval",
     "After code freeze, obtain a genuinely independent newly authored blind holdout; do not reuse or relabel v2",
     "Use the latest canonical SQLite/evidence recovery checkpoint; retain first failures and the failed frozen holdout",
     "Stop further disclosed-corpus tuning; Level 1 and zero write/spend budgets remain fixed",
@@ -166,7 +170,7 @@
       "decision": "Use the disclosed v2 development split only as training feedback for detector v3, preserve the failed v2 holdout as the latest independent result, and require a newly authored blind holdout before any competence or autonomy claim."
     }
   ],
-  "status": "detector_development_v3_local_verified_fresh_blind_pending",
+  "status": "detector_development_v3_pr_ci_passed_merge_and_fresh_blind_pending",
   "verified_checkpoint": {
     "checked_at": "2026-09-01T23:42:06.157616+00:00",
     "tests": 633,
@@ -288,7 +292,7 @@
     "detector-development v3 source-to-destination, canonical-cycle, robots-intent, soft-404, sitemap and graph evidence gates",
     "48-case development split training diagnostic reached 36 TP, 0 FP/FN and 18/18 NO-ACTION controls; explicitly not blind evidence"
   ],
-  "updated_at": "2026-09-04T00:14:36Z",
+  "updated_at": "2026-09-04T00:31:35Z",
   "phase_status": {
     "0": "documentation and capability checks complete",
     "1": "foundation and actual PostgreSQL/container CI passed; durable deployment pending",
@@ -296,7 +300,7 @@
     "3": "public structural benchmark passed with 13TP, 0FP/FN and 13 correct NO-ACTION decisions",
     "4": "bounded deterministic shadow packets verified; live model reasoning not executed",
     "5": "manual public Git title change and observed rollback passed; autonomous execution disabled",
-    "6": "detector v3 local suite passed 875 tests with 8 existing PostgreSQL/container skips; changed-source disposable CI pending",
+    "6": "detector v3 passed corrected CI with 883 tests on PostgreSQL plus rollback, fixed-zero Compose and browser gates; PR merge pending approval",
     "7": "Level 1 shadow remains active; fresh independent detector-v3 holdout, continuous durable scheduling and real outcome calibration pending",
     "8": "disabled; no earned categories or automatic graduation"
   },

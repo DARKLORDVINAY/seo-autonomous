@@ -80,6 +80,9 @@ latest independent competence evidence and must not be replaced by this result.
 - Full local suite: 875 passed, 8 environment-gated skips, 0 failures.
 - Ruff on changed Python files: passed.
 - Legacy v1 Test Lab source/destination evaluator compatibility: passed.
+- Corrected disposable CI: 883 passed on PostgreSQL, Ruff passed, 13/13
+  structural issue units and 13/13 controls passed, rollback and fixed-zero
+  Compose gates passed, and all 26 fixture pages rendered without script errors.
 - Production writes, paid calls, public deployments, and account actions: zero.
 
 The eight local skips are the existing container/PostgreSQL gates. They passed
@@ -93,7 +96,8 @@ non-independent regression and is excluded from this checkpoint's evidence.
 Routine CI now neither executes nor uploads that retired corpus, and a test
 guards this retirement boundary. The original frozen artifacts and failed
 result remain preserved; only a genuinely new independent holdout can add
-competence evidence.
+competence evidence. Corrected CI run:
+`https://github.com/DARKLORDVINAY/seo-autonomous/actions/runs/33821865522`.
 
 ## Remaining uncertainty and stop rule
 
