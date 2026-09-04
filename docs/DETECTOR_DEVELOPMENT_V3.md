@@ -12,13 +12,15 @@ Google account, credential, paid provider, CMS content, or autonomy setting.
 - paid API-call budget: `0`
 - Level 2 eligibility: `false`
 
-The retired v2 holdout observations, labels, predictions, and evaluation were
-not opened or rerun during this development. Only its declared development
-split and general deterministic SEO invariants were used. A broad source-symbol
-search did surface benchmark-generator function names; the v2 holdout was
-already disclosed and retired, and this checkpoint therefore makes no blind or
-independent competence claim. A future claim requires a newly authored holdout
-whose author does not inspect this implementation.
+Detector changes were developed without opening or rerunning the retired v2
+holdout observations, labels, predictions, or evaluation. Only its declared
+development split and general deterministic SEO invariants were used. A broad
+source-symbol search did surface benchmark-generator function names; the v2
+holdout was already disclosed and retired. The first PR CI run later inherited
+a routine replay step; that non-independent replay is excluded and the step is
+removed below. This checkpoint therefore makes no blind competence claim. A
+future claim requires a newly authored holdout whose author does not inspect
+this implementation.
 
 ## Implemented diagnostic changes
 
@@ -75,7 +77,7 @@ latest independent competence evidence and must not be replaced by this result.
 ## Verification
 
 - Focused detector/runtime tests: 77 passed.
-- Full local suite: 872 passed, 8 environment-gated skips, 0 failures.
+- Full local suite: 875 passed, 8 environment-gated skips, 0 failures.
 - Ruff on changed Python files: passed.
 - Legacy v1 Test Lab source/destination evaluator compatibility: passed.
 - Production writes, paid calls, public deployments, and account actions: zero.
@@ -84,6 +86,14 @@ The eight local skips are the existing container/PostgreSQL gates. They passed
 on the unchanged baseline in disposable CI; because detector code has now
 changed, the source PR must run the complete disposable CI gate again before
 merge. That CI result is software verification, not durable-host evidence.
+
+The first PR CI run revealed that the inherited workflow still regenerated and
+evaluated the retired v2 holdout on every source change. Its output is a
+non-independent regression and is excluded from this checkpoint's evidence.
+Routine CI now neither executes nor uploads that retired corpus, and a test
+guards this retirement boundary. The original frozen artifacts and failed
+result remain preserved; only a genuinely new independent holdout can add
+competence evidence.
 
 ## Remaining uncertainty and stop rule
 

@@ -7,7 +7,7 @@
     "production_enabled": false,
     "production_write_budget": 0,
     "paid_api_calls": 0,
-    "local_tests": {"passed": 873, "failed": 0, "skipped_postgres": 8},
+    "local_tests": {"passed": 875, "failed": 0, "skipped_postgres": 8},
     "holdout_cases": 132,
     "holdout_families": 44,
     "holdout_issue_units": 108,
@@ -34,7 +34,7 @@
       "live_public_release_changed": false
     },
     "first_ci_failure_preserved": "864 passed; five PostgreSQL setup errors revealed raw-driver percent escaping in trigger helper; corrected and retested",
-    "holdout_status": "failed_first_run_frozen_disclosed_and_retired; not opened or rerun for detector v3 development",
+    "holdout_status": "failed_first_run_frozen_disclosed_and_retired; not used for v3 tuning; one inherited first-PR CI replay excluded and routine replay removed",
     "detector_development_v3": {
       "training_split_cases": 48,
       "issue_units": 36,
@@ -296,7 +296,7 @@
     "3": "public structural benchmark passed with 13TP, 0FP/FN and 13 correct NO-ACTION decisions",
     "4": "bounded deterministic shadow packets verified; live model reasoning not executed",
     "5": "manual public Git title change and observed rollback passed; autonomous execution disabled",
-    "6": "detector v3 local suite passed 873 tests with 8 existing PostgreSQL/container skips; changed-source disposable CI pending",
+    "6": "detector v3 local suite passed 875 tests with 8 existing PostgreSQL/container skips; changed-source disposable CI pending",
     "7": "Level 1 shadow remains active; fresh independent detector-v3 holdout, continuous durable scheduling and real outcome calibration pending",
     "8": "disabled; no earned categories or automatic graduation"
   },
@@ -392,6 +392,12 @@
       "kind": "artifact_transfer",
       "status": "limited",
       "effect": "Connected download returned a signed artifact URL, but workspace retrieval returned HTTP 403. Full CI SQL/JSON/screenshot bundles remain in GitHub artifacts; only verified API log summaries are copied here."
+    },
+    {
+      "kind": "retired_holdout_routine_ci_replay",
+      "status": "reproduced_and_fixed_on_detector_v3_pr",
+      "effect": "The first detector-v3 PR run inherited a workflow step that regenerated/evaluated the disclosed retired v2 holdout. The result is excluded from competence evidence. Routine execution and artifact upload were removed and guarded by a regression test.",
+      "guardrail_weakened": false
     }
   ]
 }
