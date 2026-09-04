@@ -112,10 +112,12 @@ def test_cannibalisation_can_be_legitimate_and_never_requests_merge():
 def test_orphan_assertion_requires_complete_inventory_and_observed_coverage():
     crawls = [crawl(SITE, links=[])]
     ctx = AnalysisContext(site_url=SITE, inventory_urls=[SITE, PAGE], inventory_complete=True, crawl_coverage_complete=True)
-    partial = detect_orphan_pages(crawls, context=ctx)
+    assert detect_orphan_pages(crawls, context=ctx) == []  # Unobserved is unknown, not an orphan claim.
+    both = crawls + [crawl(PAGE)]
+    partial = detect_orphan_pages(both, context=ctx.model_copy(update={"crawl_coverage_complete": False}))
     assert partial[0].kind == "potential_orphan_page"
     assert "incomplete_graph_cannot_prove_orphan" in partial[0].quality_flags
-    covered = detect_orphan_pages(crawls + [crawl(PAGE)], context=ctx)
+    covered = detect_orphan_pages(both, context=ctx)
     assert covered[0].kind == "orphan_page"
     linked = [crawl(SITE, links=[PAGE + "#quote"]), crawl(PAGE)]
     assert detect_orphan_pages(linked, context=ctx) == []
@@ -124,7 +126,8 @@ def test_orphan_assertion_requires_complete_inventory_and_observed_coverage():
 def test_429_or_timeout_is_not_a_broken_url():
     assert detect_broken_links([crawl(status_code=429), crawl(SITE + "timeout", status_code=None)]) == []
     found = detect_broken_links([crawl(SITE, links=[PAGE]), crawl(PAGE, status_code=404)])
-    assert len(found) == 1 and found[0].evidence[0]["incoming_sources"] == [SITE]
+    assert len(found) == 1 and found[0].kind == "broken_internal_link"
+    assert found[0].page_url == SITE and found[0].evidence[0]["target_url"] == PAGE
 
 
 def test_redirect_detection_distinguishes_single_hop_from_chain():
@@ -182,4 +185,3 @@ def test_serp_comparison_is_observational_and_preserves_url_identity():
     assert result["removed"] == [PAGE]
     assert result["causal_attribution"] is None
     assert compare_serps([], [])["jaccard_overlap"] is None
-

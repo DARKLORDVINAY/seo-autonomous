@@ -349,8 +349,9 @@ def _related_urls(candidate: dict) -> set[str]:
                     result.add(value)
                 elif isinstance(value, dict) and isinstance(value.get("url"), str):
                     result.add(value["url"])
-        if isinstance(item.get("canonical_target"), str):
-            result.add(item["canonical_target"])
+        for field in ("canonical_target", "source_url", "target_url"):
+            if isinstance(item.get(field), str):
+                result.add(item[field])
     return result
 
 
