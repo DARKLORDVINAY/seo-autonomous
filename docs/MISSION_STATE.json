@@ -38,7 +38,7 @@
     "engineering_benchmark_gate_passed": false,
     "level_2_eligible": false,
     "report": "docs/DURABLE_BOUNDARY_HARDENING_CHECKPOINT.md",
-    "postgres_compose_restore_gate": "historically_passed_for_earlier_commit_only; ten explicit infrastructure gates not executed for current local commit",
+    "postgres_compose_restore_gate": "historically_passed_for_earlier_commit_only; ten explicit infrastructure gates not executed for the complete current reviewed branch HEAD/tree",
     "historical_source_ci_for_earlier_detector_v3_runtime": {
       "run_id": 33821865522,
       "tested_code_commit": "93850f80b5c5cbe5b958ff93ed7786af2a4a4272",
@@ -51,7 +51,7 @@
       "fixed_zero_compose_package": true,
       "local_fixture_rendered_pages": 26,
       "live_public_release_changed": false,
-      "scope": "Historical exact-tree evidence for the earlier detector-v3 runtime only; not evidence for local hardening commit 7a612d006f938e79a485f9887539f96731e8390a."
+      "scope": "Historical exact-tree evidence for the earlier detector-v3 runtime only; not evidence for the complete current reviewed branch HEAD/tree."
     },
     "last_verified_pr6_ci": {
       "run_id": 33822256297,
@@ -61,7 +61,7 @@
       "failed": 0,
       "skipped": 0,
       "last_verified_at": "2026-09-04T00:37:59Z",
-      "scope": "Last verified remote PR 6 state; not re-fetched in this checkpoint and not evidence for local hardening commit 7a612d006f938e79a485f9887539f96731e8390a."
+      "scope": "Last verified remote PR 6 state; not re-fetched in this checkpoint and not evidence for the complete current reviewed branch HEAD/tree."
     },
     "local_hardening": {
       "code_commit": "7a612d006f938e79a485f9887539f96731e8390a",
@@ -84,22 +84,52 @@
     "canonical_graph_audit": {
       "status": "append_only_correction_recorded_and_full_graph_reaudit_passed_with_one_explicit_historical_partial_hash_failure",
       "correction_action_id": "30802c8a-bcef-58b1-8736-464e2a972551",
-      "active_evidence_rows": 47,
-      "current_compact_full_content_hash_matches": 42,
+      "latest_canonical_action_id": "e262c420-f38e-5f3d-bfde-d3f117de240f",
+      "active_evidence_rows": 48,
+      "current_compact_full_content_hash_matches": 43,
       "legacy_spaced_full_content_valid_rows": 4,
       "historical_partial_content_hash_invalid_rows": 1,
-      "algorithm_aware_full_content_valid_rows": 46,
+      "algorithm_aware_full_content_valid_rows": 47,
       "preferred_fully_bound_replacement_rows": 5,
       "claim_json_relational_parity": true,
+      "claims": 38,
+      "claim_evidence_links": 56,
       "policy": "Do not rewrite historical append-only rows. Retain the four registered legacy full-content schemes and the one invalid partial-content row, prefer the five compact fully bound replacements, and require complete Claim JSON/ClaimEvidence relational parity."
     },
+    "canonical_external_scope_correction": {
+      "status": "applied_and_idempotent_replay_verified",
+      "action_id": "e262c420-f38e-5f3d-bfde-d3f117de240f",
+      "event_id": "6b5f7e71-72a4-5c72-b397-6a2fe9443f65",
+      "failure_id": "22763608-c5c2-5a9a-ad55-1a33712d44c1",
+      "rejected_candidate_sha256": "ff7b733300b572964045eb61a30f5afc86df4d58020e62bb3a8597a426ed18bd",
+      "rejected_candidate_promoted": false,
+      "database_sha256_before": "96f7e4aa32936cb76d1a1c6531272076fce4a1c9ef4583e8ce6c8d5d334e2da3",
+      "database_sha256_after": "3447efd037a62b0dad3fd1d6715c6a2cc18b74fdb9815806f40f6f7de4838d51",
+      "rollback_copy_sha256": "96f7e4aa32936cb76d1a1c6531272076fce4a1c9ef4583e8ce6c8d5d334e2da3",
+      "recovery_receipt": "verification/20260904-durable-boundary-hardening/canonical-external-scope-correction-receipt.json",
+      "canonical_table_counts_after": {
+        "actions": 100,
+        "action_events": 186,
+        "evidence": 48,
+        "claims": 38,
+        "claim_evidence": 56,
+        "failure_cases": 85,
+        "decision_logs": 16,
+        "assumptions": 3
+      },
+      "scope": "The authoritative database now labels external observations as historical/not re-fetched and requires disclosure plus CI for the exact complete reviewed branch HEAD/tree. Seven audit rows were appended and one MissionState row was updated; no external or production mutation occurred."
+    },
     "canonical_hash_contract": {
-      "latest_action_id": "30802c8a-bcef-58b1-8736-464e2a972551",
-      "packet_schema_version": 4,
-      "checkpoint_packet_sha256": "fe130110df3c8e2225a911ff4cd9a5f3e1ce8e9e1566eaab6178fffeaec52c95",
-      "packet_digest_scope": "Sorted compact UTF-8 JSON of every packet field, including production_write and external_mutation, excluding only checkpoint_packet_sha256; JSON-native values only and NaN forbidden.",
-      "before_mission_projection_sha256": "ba5fe420f461ee87ba749a8ef2c35477e08a189dcd827170077f84d0406e4ecd",
-      "after_mission_projection_sha256": "132c1233f5f365e5117a65a03a1ce6c9d4435d462f929c4779cd378bdb9938cc",
+      "latest_action_id": "e262c420-f38e-5f3d-bfde-d3f117de240f",
+      "packet_schema_version": 5,
+      "checkpoint_packet_sha256": "cc07455bf44a71ae275aeb3f11b3120499bdb9a4bf7e841e320a0ada2276d883",
+      "packet_digest_scope": "Sorted compact UTF-8 JSON with ensure_ascii=true of every packet field, including production_write and external_mutation, excluding only checkpoint_packet_sha256; JSON-native values only and NaN forbidden.",
+      "code_commit": "7a612d006f938e79a485f9887539f96731e8390a",
+      "code_tree": "702e0d9afce0f502c7d94174c3c757c34b8432a3",
+      "bound_predecessor_documentation_commit": "2b4b9a779db177b6397045243099a08dce2c7a6d",
+      "bound_predecessor_documentation_tree": "4c134a27c3be608b3eccd3476c1049ebe341e3de",
+      "before_mission_projection_sha256": "132c1233f5f365e5117a65a03a1ce6c9d4435d462f929c4779cd378bdb9938cc",
+      "after_mission_projection_sha256": "f36120cdc8f9b48f405e07d62ed2f61b12de5dd990be1ea906d4cac6b850d54e",
       "mission_projection_fields": [
         "available_resources",
         "unknowns",
@@ -110,8 +140,9 @@
         "phase",
         "stop_condition"
       ],
-      "prior_action_id": "ba550723-7040-510f-8f5d-e1d9832f631b",
-      "prior_action_record_sha256": "8b5e42fd8a177c01263174d9ec3ce8dd631e7308a3f7f64684f08db80b6992d0",
+      "prior_action_id": "30802c8a-bcef-58b1-8736-464e2a972551",
+      "prior_checkpoint_packet_sha256": "fe130110df3c8e2225a911ff4cd9a5f3e1ce8e9e1566eaab6178fffeaec52c95",
+      "prior_action_record_sha256": "809e645308dd2e48cb5ed194c107b8f26b7ecb9db024ee422c96db279ecc5f25",
       "prior_action_projection_fields": [
         "id",
         "created_at",
@@ -151,7 +182,7 @@
       "level_2_eligible": false,
       "evidence_class": "development_training_feedback_not_blind_validation"
     },
-    "next_human_required_action": "Explicitly approve or decline disclosure of the complete local non-default branch hardening/blind-evaluation-isolation-v3-20260904, identifying 7a612d006f938e79a485f9887539f96731e8390a as the hardened code commit and including all later recovery/documentation provenance commits through the then-current reviewed branch HEAD. Record that exact final HEAD/tree before any upload to DARKLORDVINAY/seo-autonomous. Then run disposable PostgreSQL/container CI for that exact disclosed HEAD, review code freeze, and commission a fresh holdout in an independent immutable kernel-isolated evaluator. Merge, durable hosting, Google APIs and autonomy remain separate gates."
+    "next_human_required_action": "Explicitly approve or decline disclosure of the complete local non-default branch hardening/blind-evaluation-isolation-v3-20260904, identifying 7a612d006f938e79a485f9887539f96731e8390a as the hardened code ancestor and including all later canonical/recovery documentation commits through the then-current reviewed branch HEAD. Immediately before any approved upload, record the exact final HEAD/tree and confirm the clean worktree and complete disclosure set. Then run disposable PostgreSQL/container CI for that exact disclosed HEAD, review code freeze, and commission a fresh holdout in an independent immutable kernel-isolated evaluator. Merge, durable hosting, Google APIs and autonomy remain separate gates."
   },
   "objective": "Maximise incremental qualified organic conversion value",
   "success_criteria": [
@@ -184,10 +215,10 @@
     "connected_repository": "DARKLORDVINAY/seo-autonomous",
     "docker": false,
     "postgres_binary": false,
-    "cloud_browser": true,
-    "cloudflare_plugin_available": true,
-    "cloudflare_plugin_connected": false,
-    "git_repository_create_tool": false,
+    "cloud_browser": "advertised_in_checkpoint_runtime_not_authenticated_or_exercised_for_correction",
+    "cloudflare_plugin_available": "last_observed_listed_but_not_installed_not_refetched_for_correction",
+    "cloudflare_plugin_connected": "last_observed_not_connected_not_refetched_for_correction",
+    "git_repository_create_tool": "not_available_in_checkpoint_runtime_no_external_repository_action_attempted",
     "site_repository": "DARKLORDVINAY/seo-test-lab",
     "github_actions": "last_verified_available_at_recorded_remote_checkpoints_not_refetched_in_current_checkpoint",
     "cloudflare_pages_git_integration": "last_verified_configured_at_recorded_public_release_checkpoint_not_refetched_in_current_checkpoint",
@@ -198,14 +229,14 @@
       "run_id": 33568223519,
       "tested_commit": "2e4377cf0a5d9952ffe5ba74de6afd0879806212",
       "tested_tree": "c4c229c7424a2e544b48a3409d571a507146c5f9",
-      "scope": "Actual PostgreSQL 17.11 disposable CI evidence for this exact historical tree only; not evidence for local hardening commit 7a612d006f938e79a485f9887539f96731e8390a."
+      "scope": "Actual PostgreSQL 17.11 disposable CI evidence for this exact historical tree only; not evidence for the complete current local reviewed branch."
     },
     "historical_foundation_docker_compose_ci": {
       "verified": true,
       "run_id": 33568223519,
       "tested_commit": "2e4377cf0a5d9952ffe5ba74de6afd0879806212",
       "tested_tree": "c4c229c7424a2e544b48a3409d571a507146c5f9",
-      "scope": "Actual nonroot API/worker/database Compose startup for this exact historical tree only; not evidence for local hardening commit 7a612d006f938e79a485f9887539f96731e8390a."
+      "scope": "Actual nonroot API/worker/database Compose startup for this exact historical tree only; not evidence for the complete current local reviewed branch."
     },
     "current_local_hardening_postgres_docker_ci_verified": false,
     "public_browser_verified": "last_verified_at_recorded_public_checkpoint_not_refetched_in_current_checkpoint",
@@ -220,7 +251,8 @@
   },
   "unknowns": [
     "fresh independently authored detector-v3 holdout performance",
-    "remote CI and actual PostgreSQL/container result for local hardening commit 7a612d006f938e79a485f9887539f96731e8390a",
+    "actual PostgreSQL/container behavior for the complete reviewed local branch HEAD/tree that would be recorded immediately before any authorized disclosure; 7a612d006f938e79a485f9887539f96731e8390a is the hardened code ancestor only",
+    "current GitHub, CI, Cloudflare Pages, public-browser, GSC and GA4 external state; it was not re-fetched in this checkpoint",
     "independent immutable kernel-isolated evaluator and verified dependency artifacts",
     "controlled remote PostgreSQL CA/hostname failure behavior",
     "real backup/restore, power-loss and off-host recovery behavior for the current release",
@@ -233,7 +265,7 @@
   "blockers": [
     "The retired v2 holdout failed and the perfect v3 development score is training evidence only; no fresh independent competence result exists",
     "The local reference runner is deliberately non-independent and cannot pass the engineering gate; a real evaluator must provide kernel isolation and immutable verified runtime artifacts",
-    "The GitHub connector rejected source upload because it could not verify the disclosure destination; there is no successful upload, remote-branch, PR or CI receipt for the local hardening branch, and remote state was not re-fetched",
+    "The GitHub connector rejected source upload at the disclosure gate; canonical state contains no successful upload, remote-branch, PR or CI receipt for the complete local branch, and remote state was not re-fetched",
     "Ten PostgreSQL/container/restore gates are explicitly skipped locally; static and SQLite tests do not prove their current-release behavior",
     "Existing or shared PostgreSQL clusters fail the capability boundary until an authorized owner isolates cross-database ACLs",
     "No durable PostgreSQL/container host is connected; CI services are disposable",
@@ -243,20 +275,22 @@
     "Remote MCP needs a deployed HTTPS service and OAuth issuer/client registration"
   ],
   "critical_path": [
-    "Preserve frozen failed holdout v2 and all completed public release evidence",
-    "Obtain explicit source-disclosure approval before publishing the complete local non-default branch, including hardened code commit 7a612d006f938e79a485f9887539f96731e8390a and every later recovery/documentation provenance commit through the then-current reviewed HEAD",
-    "Record the exact final disclosed HEAD/tree, then run complete disposable PostgreSQL/container CI against that exact branch head; local tests cannot substitute for the ten infrastructure gates",
-    "Review source PR 6 together with the newer local hardening diff; do not merge either without explicit approval",
-    "After code freeze, obtain a genuinely independent newly authored blind holdout in an immutable kernel-isolated runner; do not reuse or relabel v2",
-    "Use the latest canonical SQLite/evidence recovery checkpoint; retain first failures and the failed frozen holdout",
-    "Stop further disclosed-corpus tuning; Level 1 and zero write/spend budgets remain fixed",
-    "Future human gate only after independent competence evidence: authorize an existing durable backend target; no account action now"
+    "Preserve the failed, disclosed and retired v2 holdout as the latest independent result",
+    "Obtain explicit disclosure approval for the complete local non-default branch hardening/blind-evaluation-isolation-v3-20260904, identifying 7a612d006f938e79a485f9887539f96731e8390a as the hardened code ancestor and including every later recovery/documentation commit through the then-current reviewed HEAD",
+    "Immediately before any approved upload, record the exact final HEAD/tree and confirm both the clean worktree and complete disclosure set",
+    "Run complete disposable PostgreSQL/container CI against that exact disclosed HEAD/tree, including all ten currently skipped gates",
+    "Review the last-verified PR 6 receipt together with the complete local hardening diff; current remote PR state is unknown/not re-fetched and merge remains a separate explicit decision",
+    "After a reviewed code freeze, commission a fresh holdout in an independent immutable kernel-isolated, network-denied evaluator",
+    "Keep Level 1, production disabled, empty earned categories and zero write/spend budgets",
+    "Authorize an existing durable backend target only after the preceding evidence gates; no account action is requested now"
   ],
   "budget": {
     "max_build_workers": 5,
     "paid_api_calls_authorised_for_this_build": 0,
     "max_specialists_per_runtime_cycle": 3,
-    "production_write_budget": 0
+    "production_write_budget": 0,
+    "max_daily_actions": 0,
+    "max_daily_cost_usd": 0
   },
   "assumptions": [
     {
@@ -296,12 +330,12 @@
     },
     {
       "id": "D8",
-      "decision": "Require an application-dedicated PostgreSQL cluster, separate API/worker roles, immutable release and independent migration-target pins, and current exact-commit PostgreSQL/container/recovery evidence before durable deployment; retain Level 1 and zero production-write/spend budgets."
+      "decision": "Require an application-dedicated PostgreSQL cluster, separate API/worker roles, immutable release and independent migration-target pins, and exact-complete-disclosed-HEAD PostgreSQL/container/recovery evidence before durable deployment; retain Level 1 and zero production-write/spend budgets."
     }
   ],
-  "status": "local_durable_boundary_and_canonical_graph_hardening_verified_external_postgresql_container_recovery_and_evaluator_pending",
+  "status": "canonical_external_scope_corrected_recovery_v10_reaudit_pending",
   "verified_checkpoint": {
-    "scope": "Historical checkpoint for exact commit 2e4377cf0a5d9952ffe5ba74de6afd0879806212, tree c4c229c7424a2e544b48a3409d571a507146c5f9 and run 33568223519 only; not evidence for local hardening commit 7a612d006f938e79a485f9887539f96731e8390a.",
+    "scope": "Historical checkpoint for exact commit 2e4377cf0a5d9952ffe5ba74de6afd0879806212, tree c4c229c7424a2e544b48a3409d571a507146c5f9 and run 33568223519 only; not evidence for the complete current reviewed branch HEAD/tree.",
     "checked_at": "2026-09-01T23:42:06.157616+00:00",
     "tests": 633,
     "failures": 0,
@@ -422,15 +456,15 @@
     "detector-development v3 source-to-destination, canonical-cycle, robots-intent, soft-404, sitemap and graph evidence gates",
     "48-case development split training diagnostic reached 36 TP, 0 FP/FN and 18/18 NO-ACTION controls; explicitly not blind evidence"
   ],
-  "updated_at": "2026-09-04T18:50:57Z",
+  "updated_at": "2026-09-04T19:40:05.927804Z",
   "phase_status": {
     "0": "documentation and capability checks complete",
-    "1": "historical foundation PostgreSQL/container CI passed for exact commit 2e4377cf0a5d9952ffe5ba74de6afd0879806212, tree c4c229c7424a2e544b48a3409d571a507146c5f9 and run 33568223519; current local hardening commit still has ten infrastructure gates and durable deployment pending",
+    "1": "historical foundation PostgreSQL/container CI passed for exact commit 2e4377cf0a5d9952ffe5ba74de6afd0879806212, tree c4c229c7424a2e544b48a3409d571a507146c5f9 and run 33568223519; the complete current local reviewed branch still has ten infrastructure gates and durable deployment pending",
     "2": "historical public-lab inventory/crawl, GSC-owner and GA4-stream observations are preserved; external state was not re-fetched, API credentials and actual analytics receipt remain pending",
     "3": "historical public structural benchmark passed with 13TP, 0FP/FN and 13 correct NO-ACTION decisions; this is not current detector-v3 competence evidence",
     "4": "bounded deterministic shadow packets verified; live model reasoning not executed",
     "5": "historical manual public Git title change and observed rollback passed; no current external state was fetched and autonomous execution is disabled",
-    "6": "detector v3 last-verified CI run 33822256297 passed 883 tests for exact PR head b6b91b20af690c6c972f7f8e223feadf43756331 and tree 61291ae923ebec791243aa655f7a16929a5e37e3; PR state was not re-fetched and current local hardening commit has no remote CI receipt",
+    "6": "detector v3 last-verified CI run 33822256297 passed 883 tests for exact PR head b6b91b20af690c6c972f7f8e223feadf43756331 and tree 61291ae923ebec791243aa655f7a16929a5e37e3; PR state was not re-fetched and the complete local reviewed branch has no remote CI receipt",
     "7": "Level 1 shadow remains active; fresh independent detector-v3 holdout, continuous durable scheduling and real outcome calibration pending",
     "8": "disabled; no earned categories or automatic graduation"
   },
@@ -533,6 +567,14 @@
       "status": "reproduced_and_fixed_on_detector_v3_pr",
       "effect": "The first detector-v3 PR run inherited a workflow step that regenerated/evaluated the disclosed retired v2 holdout. The result is excluded from competence evidence. Routine execution and artifact upload were removed and guarded by a regression test.",
       "guardrail_weakened": false
+    },
+    {
+      "kind": "recovery_v10_canonical_state_semantic_divergence",
+      "status": "candidate_rejected_append_only_correction_applied_reaudit_pending",
+      "effect": "Candidate ff7b733300b572964045eb61a30f5afc86df4d58020e62bb3a8597a426ed18bd was not promoted because the authoritative SQLite MissionState retained current-looking external statuses and a code-only disclosure/CI target. Action e262c420-f38e-5f3d-bfde-d3f117de240f scopes those observations as historical/not re-fetched and targets the exact complete reviewed branch HEAD/tree.",
+      "guardrail_weakened": false,
+      "production_write": false,
+      "external_mutation": false
     }
   ]
 }

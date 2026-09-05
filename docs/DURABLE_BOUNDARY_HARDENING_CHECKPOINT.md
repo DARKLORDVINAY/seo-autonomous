@@ -45,8 +45,9 @@ The ten complete-suite skips are explicit: one actual dump/restore test, two
 live PostgreSQL migration gates (the general audit and the direct-Alembic
 hostile-default gate), two runtime-role tests and five PostgreSQL
 scheduler-chaos tests. Docker/Compose and PostgreSQL are unavailable
-in this environment. Those gates remain required for this exact commit; a
-historical CI result for another commit is not evidence for this tree.
+in this environment. Those gates remain required for the exact complete
+reviewed branch HEAD/tree that would be recorded before any approved upload; a
+historical CI result for another commit is not evidence for that state.
 
 ## Recovery-integrity correction
 
@@ -58,10 +59,12 @@ mutation was recorded, but that packet digest alone was not a sufficient safety
 envelope. It is preserved as an append-only failure, not rewritten. Corrective
 action `ba550723-7040-510f-8f5d-e1d9832f631b` first repaired that envelope;
 the later full-graph correction
-`30802c8a-bcef-58b1-8736-464e2a972551` is the latest canonical action.
+`30802c8a-bcef-58b1-8736-464e2a972551` repaired evidence and Claim-link debt.
+External-scope correction `e262c420-f38e-5f3d-bfde-d3f117de240f` is now the
+latest canonical action.
 
 The latest packet SHA-256 is
-`fe130110df3c8e2225a911ff4cd9a5f3e1ce8e9e1566eaab6178fffeaec52c95`.
+`cc07455bf44a71ae275aeb3f11b3120499bdb9a4bf7e841e320a0ada2276d883`.
 It covers sorted compact UTF-8 JSON with JSON-native values, including both
 safety flags, and excludes only `checkpoint_packet_sha256`. Its before/after
 mission hashes cover the explicitly registered projection—`available_resources`,
@@ -79,13 +82,15 @@ archive-root-relative and contain no parent traversal. The committed mission
 document labels earlier remote CI by exact scope; the canonical database and
 latest recovery receipt are authoritative only within their stated scopes.
 
-The canonical action binds documentation commit
+The graph-correction action binds documentation commit
 `95621273b2d37fc39f195a1abda2f7db87d2e6f1` and tree
 `5a057b264c61d205d98c88a851ad51ee31925db0`. A later documentation-only
 packaging/provenance commit, including receipt-scope clarification, must be
-recorded separately as the recovery repository head. It must not replace the
-database action's bound documentation identity or be presented as a new
-canonical database action.
+recorded separately as the recovery repository head. The external-scope action
+binds predecessor documentation commit
+`2b4b9a779db177b6397045243099a08dce2c7a6d` and tree
+`4c134a27c3be608b3eccd3476c1049ebe341e3de`. This document's later packaging
+commit is recovery material, not a rewrite of either database action.
 
 ### Canonical graph debt
 
@@ -97,16 +102,42 @@ One Claim also declared an Evidence ID in JSON without the corresponding
 relational `ClaimEvidence` edge.
 
 These are retained failures, not silently normalized. The append-only
-correction now records the exact historical hash schemes and digests, appends
+correction records the exact historical hash schemes and digests, appends
 five fully bound replacement Evidence rows, and adds the missing relational
-edge without rewriting the Claim. A subsequent full-graph audit records 47
-Evidence rows: 42 current compact full-content hashes, four valid legacy
+edge without rewriting the Claim. After the external-scope action adds one
+more compact fully bound Evidence row, the full graph records 48 Evidence
+rows: 43 current compact full-content hashes, four valid legacy
 spaced-JSON full-content hashes and one retained historical partial-content
-hash that is invalid for full-content integrity. The five replacements are
-preferred, 46 of 47 rows validate under their registered full-content schemes,
-and Claim JSON/relational-link parity passes. Receipts must keep the one
+hash that is invalid for full-content integrity. The five replacements remain
+preferred, 47 of 48 rows validate under their registered full-content schemes,
+and all 38 Claims match all 56 relational links. Receipts must keep the one
 historical partial-content failure explicit rather than reporting an unscoped
 `evidence_hash_valid=true`.
+
+### Rejected v10 candidate and canonical external-scope correction
+
+Independent receipt-scope review rejected candidate
+`ff7b733300b572964045eb61a30f5afc86df4d58020e62bb3a8597a426ed18bd`
+(4,437,065 bytes) before promotion. ZIP, Git, database-integrity, evidence-graph,
+JUnit, lineage and chronology checks passed, but the authoritative SQLite
+MissionState still exposed current-looking GitHub, Cloudflare, CI, browser,
+GSC, GA4, public-release and PR values. It also targeted disclosure and CI at
+the hardened code commit alone even though later recovery/provenance commits
+were part of the reviewed branch. Because the API and MCP expose MissionState
+directly, a DB-only restore could reconstruct stale claims and the wrong next
+action; accurate archive documentation was not a sufficient overlay.
+
+The candidate remains rejected and unpromoted. Action
+`e262c420-f38e-5f3d-bfde-d3f117de240f` appended one Evidence, Claim,
+ClaimEvidence, FailureCase, DecisionLog and ActionEvent, then updated the sole
+mutable MissionState row in the same transaction. The pre-correction database
+is preserved byte-for-byte at SHA-256
+`96f7e4aa32936cb76d1a1c6531272076fce4a1c9ef4583e8ce6c8d5d334e2da3`;
+the corrected database is
+`3447efd037a62b0dad3fd1d6715c6a2cc18b74fdb9815806f40f6f7de4838d51`.
+Integrity, foreign keys, exact eight-change transaction shape, idempotent
+replay, safety state, full Claim parity and all registered Evidence schemes
+pass. No external state was fetched or changed.
 
 ### Recovery provenance, lineage and chronology
 
@@ -212,7 +243,8 @@ Level-2 activation.
 ## Remaining uncertainty
 
 - Actual PostgreSQL catalogue/ACL, migration-transaction, trigger, fencing and
-  column-grant behavior for this exact commit needs the disposable live gate.
+  column-grant behavior for the exact complete reviewed/disclosed branch HEAD
+  needs the disposable live gate.
 - The merged Compose stack, init hook, nonroot startup and immutable-image order
   need a current container/CI receipt.
 - Remote hostname/CA failure behavior needs a controlled TLS endpoint.
@@ -225,10 +257,9 @@ Level-2 activation.
 
 ## Exact next human-required critical action
 
-When account actions are allowed again, explicitly approve or decline disclosure
-of the complete local non-default branch
+Explicitly approve or decline disclosure of the complete local non-default branch
 `hardening/blind-evaluation-isolation-v3-20260904`. The review must identify
-`7a612d006f938e79a485f9887539f96731e8390a` as the hardened code commit and
+`7a612d006f938e79a485f9887539f96731e8390a` as the hardened code ancestor and
 include every later recovery/documentation provenance commit through the
 then-current branch HEAD. Record that exact final HEAD/tree before any upload to
 `DARKLORDVINAY/seo-autonomous`. Only after approval may a remote branch/PR and
@@ -236,3 +267,9 @@ disposable PostgreSQL/container CI run for that exact disclosed HEAD be created.
 A later reviewed code freeze and independent fresh holdout are separate gates.
 Merge, durable hosting, Google API connection and any autonomy change remain
 separate human decisions.
+
+This source-disclosure decision can be given in the conversation; no Google,
+Cloudflare or hosting-account action is needed at this gate. The connector's
+automatic approval review previously rejected the upload because it could not
+verify the disclosure destination. Any renewed upload must use the complete
+reviewed source state and the repository named above, within explicit approval.
