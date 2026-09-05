@@ -35,9 +35,11 @@ this work.
 | Git diff/whitespace validation | passed |
 | CLI import/help smoke tests | passed; one pre-existing Pydantic warning |
 
-The JUnit artifact independently records 1,070 collected outcomes: 1,060
-passed, 10 skipped, and zero failures/errors. The single known-warning count is
-from the captured pytest/CLI console summary, not a field attested by JUnit.
+The machine-readable JUnit report records 1,070 collected outcomes: 1,060
+passed, 10 skipped, zero failures/errors and 39.185 seconds. Those suite fields
+are the complete scope attested by JUnit. The warning count, targeted-slice
+totals, Ruff, compileall, dependency, diff and CLI results are local
+mission-governor/console reports; JUnit does not attest them.
 
 The ten complete-suite skips are explicit: one actual dump/restore test, two
 live PostgreSQL migration gates (the general audit and the direct-Alembic
@@ -53,9 +55,21 @@ The first local canonical follow-up action, identified in recovery history as
 that excluded the top-level `production_write` and `external_mutation` flags.
 The SQLite/database and archive digests still bound the stored bytes, and no
 mutation was recorded, but that packet digest alone was not a sufficient safety
-envelope. It is preserved as an append-only failure, not rewritten. The
-superseding canonical receipt hashes every substantive payload field—including
-both safety flags—and excludes only the digest itself.
+envelope. It is preserved as an append-only failure, not rewritten. Corrective
+action `ba550723-7040-510f-8f5d-e1d9832f631b` first repaired that envelope;
+the later full-graph correction
+`30802c8a-bcef-58b1-8736-464e2a972551` is the latest canonical action.
+
+The latest packet SHA-256 is
+`fe130110df3c8e2225a911ff4cd9a5f3e1ce8e9e1566eaab6178fffeaec52c95`.
+It covers sorted compact UTF-8 JSON with JSON-native values, including both
+safety flags, and excludes only `checkpoint_packet_sha256`. Its before/after
+mission hashes cover the explicitly registered projection—`available_resources`,
+`unknowns`, `blockers`, `critical_path`, `resource_budget`, `autonomy_level`,
+`phase` and `stop_condition`—not an unspecified raw row. The registered prior
+action-record hash covers `id`, UTC ISO-8601 `created_at`, `kind`, `risk`,
+`actor`, `reason`, `experiment_id`, `idempotency_key` and `payload_json` under
+the same canonicalization contract.
 
 The recovery audit also requires the ten skipped checks to be enumerated as
 `1 + 1 + 1 + 1 + 1 + 5 = 10`: dump/restore, general live migration/audit,
@@ -63,7 +77,15 @@ direct-Alembic hostile-default, actual role split, runtime-role immutability,
 and five scheduler-chaos cases. Machine-consumed recovery paths are
 archive-root-relative and contain no parent traversal. The committed mission
 document labels earlier remote CI by exact scope; the canonical database and
-latest recovery receipt remain authoritative for post-commit state.
+latest recovery receipt are authoritative only within their stated scopes.
+
+The canonical action binds documentation commit
+`95621273b2d37fc39f195a1abda2f7db87d2e6f1` and tree
+`5a057b264c61d205d98c88a851ad51ee31925db0`. A later documentation-only
+packaging/provenance commit, including receipt-scope clarification, must be
+recorded separately as the recovery repository head. It must not replace the
+database action's bound documentation identity or be presented as a new
+canonical database action.
 
 ### Canonical graph debt
 
@@ -74,12 +96,42 @@ observation and leaves outer authority/activity fields outside its stored hash.
 One Claim also declared an Evidence ID in JSON without the corresponding
 relational `ClaimEvidence` edge.
 
-These are retained failures, not silently normalized. The recovery checkpoint
-records the exact historical hash schemes and digests, appends fully bound
-replacement Evidence, and adds the missing relational edge without rewriting
-the Claim. Receipt flags state whether they cover the latest corrective delta or
-the full graph. The historical partial-content hash remains explicitly invalid
-for full-content integrity even though its replacement is valid.
+These are retained failures, not silently normalized. The append-only
+correction now records the exact historical hash schemes and digests, appends
+five fully bound replacement Evidence rows, and adds the missing relational
+edge without rewriting the Claim. A subsequent full-graph audit records 47
+Evidence rows: 42 current compact full-content hashes, four valid legacy
+spaced-JSON full-content hashes and one retained historical partial-content
+hash that is invalid for full-content integrity. The five replacements are
+preferred, 46 of 47 rows validate under their registered full-content schemes,
+and Claim JSON/relational-link parity passes. Receipts must keep the one
+historical partial-content failure explicit rather than reporting an unscoped
+`evidence_hash_valid=true`.
+
+### Recovery provenance, lineage and chronology
+
+Canonical Evidence whose source names an independent v9 archive review contains
+a mission-governor summary of that review. The raw independent audit report is
+not a recovery-archive member, so the review's provenance is not independently
+reconstructable from members alone. Likewise, any
+`flawed_action_unchanged` comparison that used the separately retained v9 ZIP
+must say so; the embedded metadata alone cannot reproduce that comparison.
+
+Version lineage is deliberately narrow. The v9 outer archive SHA-256 belongs in
+the v10 outer manifest and post-construction receipt. Only v9's README and
+`SHA256SUMS.json` are embedded under `previous-bundle/`; that directory is not
+the complete v9 archive. The stale-manifest defect occurred in v8 and must not
+be attributed to v9. V8 metadata may also be preserved for failure history,
+with the same metadata-only scope.
+
+Receipt timestamps describe different events. `checkpoint_recorded_at` is the
+canonical database action/event time and can precede recovery construction.
+`member_receipt_prepared_at` is captured only after all referenced members have
+been built and locally verified. The outer manifest's `generated_at` is the
+actual later time at which the complete staging-tree manifest is generated,
+not the canonical action time. Because the ZIP does not yet exist while its
+members are written, its final SHA-256 and clean-room verification require a
+separate post-construction receipt outside the ZIP.
 
 ## Material hardening
 
@@ -138,17 +190,24 @@ misattribution, revision reuse and current-release CI overclaiming. Locally
 actionable paths are remediated; external proof gaps remain open rather than
 being converted to passing evidence.
 
-## External state preserved
+## External state scope
 
-- Public Test Lab: `https://seo-test-lab.pages.dev/` (not modified).
-- Public Test Lab repository main remains at its last verified checkpoint
-  `01608070c2ed22de636a703a673ed4da46a00a9c`; not re-fetched or changed here.
-- Source repository main remains at its last verified checkpoint
-  `47c4359f0898129a1739b67917841c64c06690f6`; not re-fetched or changed here.
-- Existing source PR 6 remains open/unmerged at its last verified head
-  `b6b91b20af690c6c972f7f8e223feadf43756331`; not re-fetched or changed here.
-- No hosting, Google, analytics, paid-provider, public-site or account action was
-  attempted. No production mutation or Level-2 activation occurred.
+No public site or repository was re-fetched during this checkpoint. These are
+last-verified identifiers only, not claims about current external state:
+
+- Public Test Lab URL: `https://seo-test-lab.pages.dev/`; last-verified Test Lab
+  main: `01608070c2ed22de636a703a673ed4da46a00a9c`.
+- Last-verified source main:
+  `47c4359f0898129a1739b67917841c64c06690f6`.
+- PR 6 was last verified open/unmerged at head
+  `b6b91b20af690c6c972f7f8e223feadf43756331` on
+  `2026-09-04T00:37:59Z`; its current state is unknown.
+
+The mission governor reports no attempted hosting, Google, analytics,
+paid-provider, public-site or repository modification in this checkpoint. That
+is a scoped execution report, not global absence proof. Canonical state does
+prove Level 1, `PRODUCTION_ENABLED=false`, zero write/spend authority and no
+Level-2 activation.
 
 ## Remaining uncertainty
 
@@ -167,10 +226,13 @@ being converted to passing evidence.
 ## Exact next human-required critical action
 
 When account actions are allowed again, explicitly approve or decline disclosure
-of local branch `hardening/blind-evaluation-isolation-v3-20260904` through commit
-`7a612d006f938e79a485f9887539f96731e8390a` to
-`DARKLORDVINAY/seo-autonomous` on a non-default branch. Only after approval may a
-remote branch/PR and disposable PostgreSQL/container CI run be created. A later
-reviewed code freeze and independent fresh holdout are separate gates. Merge,
-durable hosting, Google API connection and any autonomy change remain separate
-human decisions.
+of the complete local non-default branch
+`hardening/blind-evaluation-isolation-v3-20260904`. The review must identify
+`7a612d006f938e79a485f9887539f96731e8390a` as the hardened code commit and
+include every later recovery/documentation provenance commit through the
+then-current branch HEAD. Record that exact final HEAD/tree before any upload to
+`DARKLORDVINAY/seo-autonomous`. Only after approval may a remote branch/PR and
+disposable PostgreSQL/container CI run for that exact disclosed HEAD be created.
+A later reviewed code freeze and independent fresh holdout are separate gates.
+Merge, durable hosting, Google API connection and any autonomy change remain
+separate human decisions.
