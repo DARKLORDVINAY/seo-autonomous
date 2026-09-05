@@ -238,7 +238,7 @@
     "Existing or shared PostgreSQL clusters fail the capability boundary until an authorized owner isolates cross-database ACLs",
     "No durable PostgreSQL/container host is connected; CI services are disposable",
     "GSC browser ownership and the dedicated GA4 stream were last verified in authenticated-browser observations on 2026-09-02 and were not re-fetched; backend Google API credentials remain unconnected",
-    "The opt-in analytics release is deployed and key-event registration was observed; a default-value discrepancy and actual event receipt remain unresolved; account actions are frozen",
+    "The opt-in analytics release and key-event registration were last observed on 2026-09-02 and were not re-fetched; a default-value discrepancy and actual event receipt remain unresolved; account actions are frozen",
     "Live model credentials and an explicit price/spend bound are unavailable",
     "Remote MCP needs a deployed HTTPS service and OAuth issuer/client registration"
   ],
