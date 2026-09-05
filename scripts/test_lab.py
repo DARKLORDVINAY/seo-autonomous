@@ -14,7 +14,8 @@ sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
 
 from backend.app.config.settings import Settings
 from backend.app.db.session import make_engine, make_session_factory
-from backend.app.services.test_lab import register_lab, run_benchmark
+from backend.app.services.test_lab import register_lab
+from benchmarks.legacy_lab_evaluator import run_benchmark
 from scripts.bootstrap import migrate
 
 ROOT = Path(__file__).resolve().parents[1]

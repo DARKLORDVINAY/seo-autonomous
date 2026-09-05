@@ -1,4 +1,4 @@
-"""Launched with Python -I -B in a minimal staged directory by runner_v2.
+"""Launched with Python -I -S -B in a minimal staged directory by v3.
 
 This Python audit boundary prevents ordinary truth/credential/network access.
 It is defense in depth for trusted detector code, NOT a kernel security sandbox.
@@ -19,10 +19,14 @@ MAX_OUTPUT_BYTES = 32 * 1024 * 1024
 def constrain(stage: Path) -> None:
     sys.dont_write_bytecode = True
     roots = {stage.resolve()}
+    dependency_roots = []
     for key in ("stdlib", "platstdlib", "purelib", "platlib"):
         value = sysconfig.get_path(key)
         if value:
-            roots.add(Path(value).resolve())
+            resolved = Path(value).resolve()
+            roots.add(resolved)
+            if key in {"purelib", "platlib"}:
+                dependency_roots.append(resolved)
     # base stdlib path on virtualenv installations is sometimes reported as the
     # virtualenv library path. Explicitly include the actual stdlib only.
     roots.add((Path(sys.base_prefix) / "lib" / f"python{sys.version_info.major}.{sys.version_info.minor}").resolve())
@@ -49,9 +53,14 @@ def constrain(stage: Path) -> None:
     resource.setrlimit(resource.RLIMIT_CPU, (30, 30))
     resource.setrlimit(resource.RLIMIT_AS, (768 * 1024 * 1024, 768 * 1024 * 1024))
     resource.setrlimit(resource.RLIMIT_NOFILE, (64, 64))
-    resource.setrlimit(resource.RLIMIT_FSIZE, (0, 0))
+    resource.setrlimit(resource.RLIMIT_FSIZE, (MAX_OUTPUT_BYTES, MAX_OUTPUT_BYTES))
     sys.addaudithook(audit)
     sys.path.insert(0, str(stage))
+    # -S prevents startup-time .pth/sitecustomize execution. Add only the
+    # dependency roots needed by the frozen detector after the audit hook exists.
+    for root in dependency_roots:
+        if str(root) not in sys.path:
+            sys.path.append(str(root))
 
 
 def probe(forbidden_path: str) -> dict[str, bool]:

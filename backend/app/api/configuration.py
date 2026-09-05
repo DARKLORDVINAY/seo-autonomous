@@ -216,6 +216,9 @@ def import_benchmark_attestation(
         settings.benchmark_evaluator_key_id,
         settings.benchmark_expected_definition_sha256,
         settings.benchmark_expected_source_fingerprint,
+        settings.benchmark_expected_evaluation_id,
+        settings.benchmark_expected_challenge_sha256,
+        settings.benchmark_expected_execution_environment_sha256,
     )
     if not all(required):
         raise HTTPException(409, "The pinned benchmark evaluator and expected release are not fully configured")
@@ -232,11 +235,19 @@ def import_benchmark_attestation(
         )
     except ValueError as error:
         raise HTTPException(422, "Benchmark attestation failed pinned-key or schema verification") from error
-    if attestation.issued_at > utcnow() + timedelta(minutes=5):
+    current = utcnow()
+    if attestation.issued_at > current + timedelta(minutes=5):
         raise HTTPException(422, "Benchmark attestation timestamp is in the future")
+    if attestation.issued_at < current - timedelta(hours=settings.benchmark_attestation_max_age_hours):
+        raise HTTPException(422, "Benchmark attestation is older than the configured import window")
     if (attestation.benchmark_definition_sha256 != settings.benchmark_expected_definition_sha256
             or attestation.source_fingerprint != settings.benchmark_expected_source_fingerprint):
         raise HTTPException(422, "Benchmark attestation does not match the preregistered definition and source release")
+    if (attestation.evaluation_id != settings.benchmark_expected_evaluation_id
+            or attestation.challenge_sha256 != settings.benchmark_expected_challenge_sha256):
+        raise HTTPException(422, "Benchmark attestation does not match the intended evaluation and challenge")
+    if attestation.execution_environment_sha256 != settings.benchmark_expected_execution_environment_sha256:
+        raise HTTPException(422, "Benchmark attestation does not match the preregistered execution environment")
     content = {
         **public_attestation_summary(attestation),
         "signature_verified": True,

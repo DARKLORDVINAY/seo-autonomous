@@ -2,10 +2,24 @@
 import json
 from pathlib import Path
 
+from backend.app.services import test_lab
 from scripts.public_lab_safe_summary import build_summary
 
 
 ROOT = Path(__file__).resolve().parents[1]
+
+
+def test_runtime_test_lab_service_contains_observation_not_evaluation_authority():
+    evaluator_symbols = {
+        "_read_ground_truth",
+        "_observed_overlap_pair",
+        "_seed_facet_checks",
+        "evaluate_frozen_packet",
+        "run_benchmark",
+    }
+    assert not evaluator_symbols.intersection(vars(test_lab))
+    assert callable(test_lab.collect_lab)
+    assert callable(test_lab.freeze_decisions)
 
 
 def test_runtime_dockerfile_uses_operator_script_allowlist_and_no_test_lab_copy():
@@ -33,6 +47,8 @@ def test_ci_inspects_actual_image_and_never_uploads_labelled_report():
     assert 'not (root / "benchmarks").exists()' in workflow
     assert 'not (root / "test_lab").exists()' in workflow
     assert '"blind_evaluation_v3.py"' in workflow
+    assert '"legacy_lab_evaluator.py"' in workflow
+    assert 'evaluator_symbols.intersection(vars(test_lab))' in workflow
     assert "artifacts/test-lab-*.json" not in workflow
     public_workflow = (ROOT / ".github/workflows/public-lab.yml").read_text()
     assert "aggregate-only public observation receipt" in public_workflow

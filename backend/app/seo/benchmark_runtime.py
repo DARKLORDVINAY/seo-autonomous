@@ -24,9 +24,45 @@ CONTEXT_FIELDS = frozenset({
     "page_purposes", "thin_content_word_threshold",
 })
 CASE_FIELDS = frozenset({"case_id", "crawls", "context", "gsc_rows", "ga4_rows", "rendered_crawls"})
+RESERVED_OBSERVATION_KEYS = frozenset({
+    "answer_key", "answers", "autonomy_level", "benchmark_labels", "budget", "budgets",
+    "clean_control_pages", "expected_decisions", "expected_issues", "expected_outcomes",
+    "family", "ground_truth", "guardrail", "guardrails", "label", "labels", "level_2_eligible",
+    "paid_api_calls", "policy", "private_case_results", "private_label", "production_enabled",
+    "production_write_budget", "production_writes", "scoring_key", "stratum", "system_prompt",
+    "tool_permissions", "truth",
+})
+RESERVED_OBSERVATION_KEY_TOKENS = frozenset(
+    re.sub(r"[^a-z0-9]+", "", key.casefold()) for key in RESERVED_OBSERVATION_KEYS
+)
+MAX_STRUCTURED_OBSERVATION_NODES = 100_000
+
+
+def _reject_reserved_observation_keys(value: Any) -> None:
+    """Reject label/authority channels recursively without interpreting prose."""
+    pending = [value]
+    nodes = 0
+    while pending:
+        current = pending.pop()
+        nodes += 1
+        if nodes > MAX_STRUCTURED_OBSERVATION_NODES:
+            raise ValueError("Structured observation node budget exceeded")
+        if isinstance(current, dict):
+            for key, nested in current.items():
+                if not isinstance(key, str):
+                    raise ValueError("Structured observation keys must be strings")
+                normalized = re.sub(r"[^a-z0-9]+", "", key.casefold())
+                if normalized in RESERVED_OBSERVATION_KEY_TOKENS:
+                    raise ValueError("Observation contains an evaluator-private or authority key")
+                pending.append(nested)
+        elif isinstance(current, list):
+            pending.extend(current)
+
+
 def _validate_case(value: Any) -> tuple[list[CrawlResult], AnalysisContext, list[GSCRow], list[GA4Row], str]:
     if not isinstance(value, dict) or set(value) - CASE_FIELDS:
         raise ValueError("Only observation fields are accepted")
+    _reject_reserved_observation_keys(value)
     if not isinstance(value.get("case_id"), str) or not re.fullmatch(r"[A-Za-z0-9_-]{1,96}", value["case_id"]):
         raise ValueError("Opaque case identifier required")
     if len(json.dumps(value, allow_nan=False).encode()) > MAX_CASE_BYTES:

@@ -14,6 +14,7 @@ from backend.app.db import models as m
 from backend.app.db.session import make_engine, make_session_factory
 from backend.app.integrations.common import ProviderError
 from backend.app.services import control, test_lab as lab
+from benchmarks import legacy_lab_evaluator as evaluator
 
 
 def build_sample(root: Path, *, broken: bool = False) -> tuple[Path, str, Path]:
@@ -68,7 +69,7 @@ def test_artifact_full_cycle_is_durable_blinded_and_never_live(tmp_path, lab_db,
     settings, factory = lab_db
     build, digest, truth = build_sample(tmp_path / "release", broken=True)
     site_id = register_sample(factory, build, digest)
-    original = lab._read_ground_truth
+    original = evaluator._read_ground_truth
 
     def assert_frozen_first(path):
         with factory() as observer:
@@ -79,9 +80,9 @@ def test_artifact_full_cycle_is_durable_blinded_and_never_live(tmp_path, lab_db,
             assert observer.scalar(select(func.count()).select_from(m.JobRun).where(m.JobRun.status == "completed")) == 1
         return original(path)
 
-    monkeypatch.setattr(lab, "_read_ground_truth", assert_frozen_first)
+    monkeypatch.setattr(evaluator, "_read_ground_truth", assert_frozen_first)
     with factory() as session:
-        report = lab.run_benchmark(session, site_id, settings, ground_truth_path=truth, idempotency_key="fixture-run")
+        report = evaluator.run_benchmark(session, site_id, settings, ground_truth_path=truth, idempotency_key="fixture-run")
         assert report["assessment"]["structural_benchmark_passed"]
         assert report["assessment"]["true_positives"] == 1
         assert report["assessment"]["precision"] == report["assessment"]["recall"] == 1
@@ -100,7 +101,7 @@ def test_artifact_full_cycle_is_durable_blinded_and_never_live(tmp_path, lab_db,
         assert session.scalar(select(func.count()).select_from(m.Revision)) == 0
         assert all(not probe["allowed"] for probe in report["high_critical_policy_probes"])
         count = session.scalar(select(func.count()).select_from(m.Action))
-        replay = lab.run_benchmark(session, site_id, settings, ground_truth_path=truth, idempotency_key="fixture-run")
+        replay = evaluator.run_benchmark(session, site_id, settings, ground_truth_path=truth, idempotency_key="fixture-run")
         assert replay["idempotent_replay"] and replay["job_id"] == report["job_id"]
         assert session.scalar(select(func.count()).select_from(m.Action)) == count
 
@@ -142,7 +143,7 @@ def test_page_budget_cannot_produce_clean_no_action_decisions(tmp_path, lab_db):
     build, digest, truth = build_sample(tmp_path / "release")
     site_id = register_sample(factory, build, digest)
     with factory() as session:
-        report = lab.run_benchmark(session, site_id, settings.model_copy(update={"max_pages_per_crawl": 1}), ground_truth_path=truth)
+        report = evaluator.run_benchmark(session, site_id, settings.model_copy(update={"max_pages_per_crawl": 1}), ground_truth_path=truth)
         assert not report["assessment"]["coverage_complete"]
         assert report["assessment"]["correct_no_action"] == 0
         assert len(report["assessment"]["unobserved_controls"]) >= 1
@@ -154,10 +155,10 @@ def test_failed_new_collection_does_not_reuse_old_pages_or_opportunities(tmp_pat
     build, digest, truth = build_sample(tmp_path / "release", broken=True)
     site_id = register_sample(factory, build, digest)
     with factory() as session:
-        first = lab.run_benchmark(session, site_id, settings, ground_truth_path=truth)
+        first = evaluator.run_benchmark(session, site_id, settings, ground_truth_path=truth)
         assert first["assessment"]["true_positives"] == 1
         (build / "inventory.json").write_text("{}")
-        second = lab.run_benchmark(session, site_id, settings, ground_truth_path=truth)
+        second = evaluator.run_benchmark(session, site_id, settings, ground_truth_path=truth)
         assert second["ingestion"]["crawl"]["status"] == "unavailable"
         assert second["assessment"]["false_negatives"] == 1
         assert second["assessment"]["true_positives"] == 0
@@ -245,7 +246,7 @@ def test_evaluator_counts_duplicate_predictions_as_false_positives_and_misses_as
               "cycle": {"result": {"execution": {"status": "shadow", "executed": []}}}}
     truth = {"expected_issues": [{"id": "one", "kind": "orphan_page", "path": "/one/"},
                                  {"id": "two", "kind": "orphan_page", "path": "/two/"}], "clean_control_pages": ["/clean/"]}
-    result = lab.evaluate_frozen_packet(packet, truth)
+    result = evaluator.evaluate_frozen_packet(packet, truth)
     assert (result["true_positives"], result["false_positives"], result["false_negatives"]) == (1, 1, 1)
     assert result["precision"] == result["recall"] == 0.5
     assert result["correct_no_action"] == 1 and not result["structural_benchmark_passed"]
@@ -270,7 +271,7 @@ def test_wrong_factual_seed_evidence_does_not_count_as_true_positive():
               "cycle": {"result": {"execution": {"status": "shadow", "executed": []}}}}
     truth = {"expected_issues": [{"id": "broken", "kind": "broken_internal_link", "path": "/source/",
                                   "related_paths": ["/target/"], "evidence_facets": {"target_http_status": 404}}]}
-    result = lab.evaluate_frozen_packet(packet, truth)
+    result = evaluator.evaluate_frozen_packet(packet, truth)
     assert result["true_positives"] == 0 and result["false_positives"] == result["false_negatives"] == 1
     assert result["seed_evidence_disagreements"][0]["failed"][0]["observed"] == [200]
     assert not result["structural_benchmark_passed"]
@@ -289,6 +290,6 @@ def test_immutable_dispatch_audit_overrules_a_shadow_status_label(tmp_path, lab_
         session.add(m.ActionEvent(site_id=site_id, action_id=action.id, event_type="dispatching", details_json={"fixture_test": True}))
         session.commit()
         frozen = lab.freeze_decisions(session, session.get(m.Site, site_id), cycle)
-        result = lab.evaluate_frozen_packet(frozen.content, lab._read_ground_truth(truth))
+        result = evaluator.evaluate_frozen_packet(frozen.content, evaluator._read_ground_truth(truth))
         assert frozen.content["external_mutation_events"][0]["action_id"] == action.id
         assert not result["zero_autonomous_production_changes"] and not result["structural_benchmark_passed"]

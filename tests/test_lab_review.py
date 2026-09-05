@@ -11,7 +11,7 @@ from backend.app.db import models as m
 from backend.app.db.session import make_engine, make_session_factory
 from backend.app.guardrails.policy import classify_risk
 from backend.app.services.control import create_site
-from backend.app.services.test_lab import evaluate_frozen_packet
+from benchmarks.legacy_lab_evaluator import evaluate_frozen_packet
 from scripts.lab_rollback_drill import run_drill
 
 

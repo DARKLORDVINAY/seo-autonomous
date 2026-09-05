@@ -10,11 +10,13 @@ from __future__ import annotations
 import base64
 import binascii
 import hashlib
+import hmac
+import inspect
 import json
 import os
+import re
 from datetime import datetime, timedelta, timezone
 from pathlib import Path
-import shutil
 import subprocess
 import sys
 import tempfile
@@ -30,6 +32,7 @@ from backend.app.seo.benchmark_attestation import (
     BenchmarkAttestation,
     EngineeringThresholds,
     IDENTIFIER_PATTERN,
+    OPAQUE_ID_PATTERN,
     PROTOCOL,
     SHA256_PATTERN,
     SIGNATURE_DOMAIN,
@@ -38,10 +41,29 @@ from backend.app.seo.benchmark_attestation import (
     attestation_signing_bytes,
     canonical_bytes,
 )
-from backend.app.seo.benchmark_runtime import MAX_CASES, validate_observation_cases
-
-
 ROOT = Path(__file__).resolve().parents[1]
+MAX_CASES = 256
+MAX_PAGES_PER_CASE = 64
+MAX_ROWS_PER_CASE = 512
+MAX_CASE_BYTES = 2 * 1024 * 1024
+CASE_FIELDS = frozenset({"case_id", "crawls", "context", "gsc_rows", "ga4_rows", "rendered_crawls"})
+CONTEXT_FIELDS = frozenset({
+    "site_url", "inventory_urls", "inventory_complete", "crawl_coverage_complete",
+    "entrypoint_urls", "sitemap_urls", "sitemap_complete", "intended_indexable_urls",
+    "page_purposes", "thin_content_word_threshold",
+})
+RESERVED_OBSERVATION_KEYS = frozenset({
+    "answer_key", "answers", "autonomy_level", "benchmark_labels", "budget", "budgets",
+    "clean_control_pages", "expected_decisions", "expected_issues", "expected_outcomes",
+    "family", "ground_truth", "guardrail", "guardrails", "label", "labels", "level_2_eligible",
+    "paid_api_calls", "policy", "private_case_results", "private_label", "production_enabled",
+    "production_write_budget", "production_writes", "scoring_key", "stratum", "system_prompt",
+    "tool_permissions", "truth",
+})
+RESERVED_OBSERVATION_KEY_TOKENS = frozenset(
+    re.sub(r"[^a-z0-9]+", "", key.casefold()) for key in RESERVED_OBSERVATION_KEYS
+)
+MAX_STRUCTURED_OBSERVATION_NODES = 100_000
 RUNTIME_SOURCE_PATHS = (
     "backend/__init__.py",
     "backend/app/__init__.py",
@@ -61,6 +83,9 @@ PROTOCOL_SOURCE_PATHS = (
 )
 MAX_CHALLENGE_BYTES = 16 * 1024 * 1024
 MAX_RESPONSE_BYTES = 32 * 1024 * 1024
+MAX_STDERR_BYTES = 1024 * 1024
+MAX_DEFINITION_BYTES = 1024 * 1024
+TRUTH_COMMITMENT_DOMAIN = b"spiral-max-seo/blind-benchmark/v3/private-truth\0"
 SAFETY_CONTRACT = {
     "autonomy_level": 1,
     "production_enabled": False,
@@ -72,12 +97,113 @@ SAFETY_CONTRACT = {
 }
 
 
+def _reject_reserved_observation_keys(value: Any) -> None:
+    pending = [value]
+    nodes = 0
+    while pending:
+        current = pending.pop()
+        nodes += 1
+        if nodes > MAX_STRUCTURED_OBSERVATION_NODES:
+            raise ValueError("Structured observation node budget exceeded")
+        if isinstance(current, dict):
+            for key, nested in current.items():
+                if not isinstance(key, str):
+                    raise ValueError("Structured observation keys must be strings")
+                normalized = re.sub(r"[^a-z0-9]+", "", key.casefold())
+                if normalized in RESERVED_OBSERVATION_KEY_TOKENS:
+                    raise ValueError("Observation contains an evaluator-private or authority key")
+                pending.append(nested)
+        elif isinstance(current, list):
+            pending.extend(current)
+
+
+def validate_observation_cases(cases: Any) -> list[dict[str, Any]]:
+    """Evaluator-side envelope validation with no detector imports."""
+    if not isinstance(cases, list) or not 0 < len(cases) <= MAX_CASES:
+        raise ValueError("Case collection budget exceeded")
+    identifiers = []
+    for case in cases:
+        if not isinstance(case, dict) or set(case) - CASE_FIELDS:
+            raise ValueError("Only observation fields are accepted")
+        identifier = case.get("case_id")
+        if not isinstance(identifier, str) or not re.fullmatch(OPAQUE_ID_PATTERN, identifier):
+            raise ValueError("Blind case identifiers must be opaque UUIDv4 values")
+        identifiers.append(identifier)
+        raw = canonical_bytes(case)
+        if len(raw) > MAX_CASE_BYTES:
+            raise ValueError("Case byte budget exceeded")
+        context = case.get("context", {})
+        if not isinstance(context, dict) or set(context) - CONTEXT_FIELDS:
+            raise ValueError("Context cannot carry policy, budgets, labels or evaluator data")
+        for name in ("crawls", "rendered_crawls", "gsc_rows", "ga4_rows"):
+            items = case.get(name, [])
+            limit = MAX_PAGES_PER_CASE if "crawl" in name else MAX_ROWS_PER_CASE
+            if not isinstance(items, list) or len(items) > limit:
+                raise ValueError("Observation budget exceeded")
+        _reject_reserved_observation_keys(case)
+    if len(set(identifiers)) != len(identifiers):
+        raise ValueError("Case identifiers must be unique")
+    return cases
+
+
 def digest(raw: bytes) -> str:
     return hashlib.sha256(raw).hexdigest()
 
 
+def truth_commitment(truth: Any, secret: bytes) -> str:
+    """Commit private truth without exposing guessable label digests."""
+    if not isinstance(secret, bytes) or not 32 <= len(secret) <= 128:
+        raise ValueError("Truth commitment secret must contain 32-128 private bytes")
+    return hmac.new(secret, TRUTH_COMMITMENT_DOMAIN + canonical_bytes(truth), hashlib.sha256).hexdigest()
+
+
+def scorer_source_fingerprint(scorer: Callable[[dict, dict], dict]) -> str:
+    """Bind a scorer's module bytes and callable identity without exposing them."""
+    if (not inspect.isfunction(scorer) or inspect.unwrap(scorer) is not scorer
+            or scorer.__closure__ is not None or scorer.__defaults__ or scorer.__kwdefaults__):
+        raise ValueError("Benchmark scorer must be an undecorated module-level function without mutable bindings")
+    source_file = inspect.getsourcefile(scorer)
+    source_text = inspect.getsource(scorer)
+    module = getattr(scorer, "__module__", None)
+    qualname = getattr(scorer, "__qualname__", None)
+    if not source_file or not isinstance(module, str) or not isinstance(qualname, str):
+        raise ValueError("Benchmark scorer must be a source-backed Python callable")
+    path = Path(source_file)
+    if not path.is_file() or path.stat().st_size > MAX_DEFINITION_BYTES:
+        raise ValueError("Benchmark scorer source is missing or exceeds the definition budget")
+    return digest(canonical_bytes({
+        "module": module,
+        "qualname": qualname,
+        "module_sha256": digest(path.read_bytes()),
+        "callable_source_sha256": digest(source_text.encode()),
+    }))
+
+
+def benchmark_definition_digest(
+    definition: dict[str, Any], scorer: Callable[[dict, dict], dict],
+) -> str:
+    """Hash the public scoring definition together with exact scorer source."""
+    if not isinstance(definition, dict) or not definition or "scorer_source_fingerprint" in definition:
+        raise ValueError("Benchmark definition must be a nonempty object without reserved fields")
+    bound = {**definition, "scorer_source_fingerprint": scorer_source_fingerprint(scorer)}
+    raw = canonical_bytes(bound)
+    if len(raw) > MAX_DEFINITION_BYTES:
+        raise ValueError("Benchmark definition exceeds its byte budget")
+    return digest(raw)
+
+
+def protocol_source_snapshot() -> dict[str, bytes]:
+    return {path: (ROOT / path).read_bytes() for path in PROTOCOL_SOURCE_PATHS}
+
+
+def source_snapshot_hashes(snapshot: dict[str, bytes]) -> dict[str, str]:
+    if set(snapshot) != set(PROTOCOL_SOURCE_PATHS):
+        raise ValueError("Protocol source snapshot is incomplete")
+    return {path: digest(snapshot[path]) for path in PROTOCOL_SOURCE_PATHS}
+
+
 def protocol_source_hashes() -> dict[str, str]:
-    return {path: digest((ROOT / path).read_bytes()) for path in PROTOCOL_SOURCE_PATHS}
+    return source_snapshot_hashes(protocol_source_snapshot())
 
 
 def protocol_source_fingerprint() -> str:
@@ -91,8 +217,8 @@ class ExchangeModel(BaseModel):
 class BlindChallenge(ExchangeModel):
     schema_version: Literal["3.0"]
     protocol: Literal["blind_holdout_exchange_v3"]
-    evaluation_id: str = Field(pattern=IDENTIFIER_PATTERN)
-    evaluator_id: str = Field(pattern=IDENTIFIER_PATTERN)
+    evaluation_id: str = Field(pattern=OPAQUE_ID_PATTERN)
+    evaluator_id: str = Field(pattern=OPAQUE_ID_PATTERN)
     issued_at: WireDateTime
     expires_at: WireDateTime
     observations: list[dict[str, Any]] = Field(min_length=1, max_length=MAX_CASES)
@@ -117,6 +243,8 @@ class BlindChallenge(ExchangeModel):
         if self.case_count != len(self.observations):
             raise ValueError("Challenge case count is inconsistent")
         validate_observation_cases(self.observations)
+        if any(not re.fullmatch(OPAQUE_ID_PATTERN, case["case_id"]) for case in self.observations):
+            raise ValueError("Blind case identifiers must be opaque UUIDv4 values")
         if self.observations_sha256 != digest(canonical_bytes(self.observations)):
             raise ValueError("Challenge observation commitment is inconsistent")
         if len(canonical_bytes(self)) > MAX_CHALLENGE_BYTES:
@@ -134,7 +262,7 @@ class SignedBlindChallenge(ExchangeModel):
 class FrozenResponse(ExchangeModel):
     schema_version: Literal["3.0"]
     protocol: Literal["blind_holdout_exchange_v3"]
-    evaluation_id: str = Field(pattern=IDENTIFIER_PATTERN)
+    evaluation_id: str = Field(pattern=OPAQUE_ID_PATTERN)
     challenge_sha256: str = Field(pattern=SHA256_PATTERN)
     observations_sha256: str = Field(pattern=SHA256_PATTERN)
     source_fingerprint: str = Field(pattern=SHA256_PATTERN)
@@ -218,8 +346,10 @@ def _trusted_key(public_key_pem_bytes: bytes) -> Ed25519PublicKey:
 
 def create_signed_challenge(
     observations: list[dict[str, Any]], truth: Any, *, evaluation_id: str, evaluator_id: str,
-    key_id: str, private_key: Ed25519PrivateKey, benchmark_definition_sha256: str,
-    accepted_source_fingerprint: str, issued_at: datetime, expires_at: datetime,
+    key_id: str, private_key: Ed25519PrivateKey, benchmark_definition: dict[str, Any],
+    scorer: Callable[[dict, dict], dict],
+    accepted_source_fingerprint: str, truth_commitment_secret: bytes,
+    issued_at: datetime, expires_at: datetime,
 ) -> SignedBlindChallenge:
     """Evaluator-only helper: commit private truth without embedding it."""
     challenge = BlindChallenge(
@@ -231,8 +361,8 @@ def create_signed_challenge(
         expires_at=expires_at,
         observations=observations,
         observations_sha256=digest(canonical_bytes(observations)),
-        truth_commitment_sha256=digest(canonical_bytes(truth)),
-        benchmark_definition_sha256=benchmark_definition_sha256,
+        truth_commitment_sha256=truth_commitment(truth, truth_commitment_secret),
+        benchmark_definition_sha256=benchmark_definition_digest(benchmark_definition, scorer),
         accepted_source_fingerprint=accepted_source_fingerprint,
         runtime_profile="CPython 3.12 + requirements.lock.txt",
         case_count=len(observations),
@@ -271,7 +401,7 @@ def verify_signed_challenge(
     return envelope
 
 
-def _run_isolated(observations: list[dict[str, Any]]) -> dict[str, Any]:
+def _run_isolated(observations: list[dict[str, Any]], source_snapshot: dict[str, bytes]) -> dict[str, Any]:
     raw = canonical_bytes(observations)
     if len(raw) > MAX_CHALLENGE_BYTES:
         raise ValueError("Challenge observations exceed the input budget")
@@ -280,23 +410,27 @@ def _run_isolated(observations: list[dict[str, Any]]) -> dict[str, Any]:
         for name in RUNTIME_SOURCE_PATHS:
             target = stage / name
             target.parent.mkdir(parents=True, exist_ok=True)
-            shutil.copyfile(ROOT / name, target)
-        shutil.copyfile(ROOT / "benchmarks/isolated_worker.py", stage / "worker.py")
+            target.write_bytes(source_snapshot[name])
+        (stage / "worker.py").write_bytes(source_snapshot["benchmarks/isolated_worker.py"])
         (stage / "observations.json").write_bytes(raw)
-        process = subprocess.run(
-            [sys.executable, "-I", "-B", str(stage / "worker.py"), str(stage / "observations.json")],
-            cwd=stage,
-            env={"PATH": os.defpath, "LANG": "C.UTF-8", "LC_ALL": "C.UTF-8", "TZ": "UTC", "PYTHONHASHSEED": "0"},
-            capture_output=True,
-            timeout=45,
-            check=False,
-        )
+        stdout_path, stderr_path = stage / "worker.stdout", stage / "worker.stderr"
+        with stdout_path.open("xb") as stdout, stderr_path.open("xb") as stderr:
+            process = subprocess.run(
+                [sys.executable, "-I", "-S", "-B", str(stage / "worker.py"), str(stage / "observations.json")],
+                cwd=stage,
+                env={"PATH": os.defpath, "LANG": "C.UTF-8", "LC_ALL": "C.UTF-8", "TZ": "UTC", "PYTHONHASHSEED": "0"},
+                stdout=stdout,
+                stderr=stderr,
+                timeout=45,
+                check=False,
+            )
         if process.returncode:
             raise RuntimeError(f"Isolated predictor failed closed (exit {process.returncode})")
-        if len(process.stdout) > MAX_RESPONSE_BYTES:
+        if stdout_path.stat().st_size > MAX_RESPONSE_BYTES or stderr_path.stat().st_size > MAX_STDERR_BYTES:
             raise ValueError("Predictor output exceeds the response budget")
+        output = stdout_path.read_bytes()
         try:
-            return json.loads(process.stdout, parse_constant=lambda value: (_ for _ in ()).throw(ValueError(value)))
+            return json.loads(output, parse_constant=lambda value: (_ for _ in ()).throw(ValueError(value)))
         except (UnicodeDecodeError, json.JSONDecodeError, ValueError) as error:
             raise ValueError("Isolated predictor emitted invalid JSON") from error
 
@@ -306,11 +440,12 @@ def _prediction_packet(challenge: BlindChallenge) -> tuple[dict[str, Any], str]:
         raise ValueError("Blind evaluation requires the preregistered CPython 3.12 runtime")
     if challenge.runtime_profile != "CPython 3.12 + requirements.lock.txt":
         raise ValueError("Signed challenge runtime profile is unsupported")
-    sources_before = protocol_source_hashes()
+    source_snapshot = protocol_source_snapshot()
+    sources_before = source_snapshot_hashes(source_snapshot)
     fingerprint = digest(canonical_bytes(sources_before))
     if fingerprint != challenge.accepted_source_fingerprint:
         raise ValueError("Local detector/protocol source is not the preregistered release")
-    packet = _run_isolated(challenge.observations)
+    packet = _run_isolated(challenge.observations, source_snapshot)
     if protocol_source_hashes() != sources_before:
         raise ValueError("Detector/protocol source changed during prediction")
     if any(packet.get(name) != expected for name, expected in SAFETY_CONTRACT.items()):
@@ -384,16 +519,26 @@ def freeze_response(
 
 def load_frozen_exchange(output: Path) -> tuple[SignedBlindChallenge, FrozenResponse]:
     manifest = json.loads((output / "response-manifest.json").read_bytes())
+    if not isinstance(manifest, dict) or set(manifest) != {
+        "schema_version", "protocol", "evaluation_id", "files",
+        "contains_evaluator_truth", "contains_private_case_results", "level_2_eligible",
+    }:
+        raise ValueError("Frozen response manifest has unexpected fields")
+    if manifest.get("schema_version") != "3.0" or manifest.get("protocol") != PROTOCOL:
+        raise ValueError("Frozen response manifest version is invalid")
     if set(manifest.get("files", {})) != {"signed-challenge.json", "frozen-response.json"}:
         raise ValueError("Frozen response manifest is invalid")
-    if manifest.get("contains_evaluator_truth") is not False or manifest.get("level_2_eligible") is not False:
+    if (manifest.get("contains_evaluator_truth") is not False
+            or manifest.get("contains_private_case_results") is not False
+            or manifest.get("level_2_eligible") is not False):
         raise ValueError("Frozen response manifest violates the isolation contract")
     for name, expected in manifest["files"].items():
         if digest((output / name).read_bytes()) != expected:
             raise ValueError(f"Frozen exchange artifact changed: {name}")
     challenge = SignedBlindChallenge.model_validate_json((output / "signed-challenge.json").read_bytes())
     response = FrozenResponse.model_validate_json((output / "frozen-response.json").read_bytes())
-    if challenge.challenge.evaluation_id != response.evaluation_id:
+    if (manifest.get("evaluation_id") != response.evaluation_id
+            or challenge.challenge.evaluation_id != response.evaluation_id):
         raise ValueError("Frozen exchange evaluation identifiers differ")
     return challenge, response
 
@@ -426,8 +571,9 @@ def _aggregate_metrics(result: dict[str, Any]) -> AggregateMetrics:
 
 def evaluate_and_sign(
     signed_challenge: Any, response: Any, truth: Any, *, scorer: Callable[[dict, dict], dict],
+    benchmark_definition: dict[str, Any],
     trusted_public_key_pem: bytes, expected_key_id: str, private_key: Ed25519PrivateKey,
-    issued_at: datetime,
+    truth_commitment_secret: bytes, issued_at: datetime,
 ) -> tuple[SignedBenchmarkAttestation, dict[str, Any]]:
     """Evaluator-only operation; detailed results stay in evaluator custody."""
     challenge_envelope = verify_signed_challenge(
@@ -435,7 +581,6 @@ def evaluate_and_sign(
         trusted_public_key_pem,
         expected_key_id=expected_key_id,
         now=issued_at,
-        require_unexpired=False,
     )
     challenge = challenge_envelope.challenge
     if issued_at.tzinfo is None or issued_at < challenge.issued_at:
@@ -449,8 +594,11 @@ def evaluate_and_sign(
     }
     if any(getattr(frozen, name) != expected for name, expected in bindings.items()):
         raise ValueError("Frozen response is not bound to the signed challenge")
-    if digest(canonical_bytes(truth)) != challenge.truth_commitment_sha256:
+    if truth_commitment(truth, truth_commitment_secret) != challenge.truth_commitment_sha256:
         raise ValueError("Private truth does not match its signed commitment")
+    definition_before = benchmark_definition_digest(benchmark_definition, scorer)
+    if definition_before != challenge.benchmark_definition_sha256:
+        raise ValueError("Scorer or benchmark definition does not match the signed challenge")
     # The independent evaluator reruns the accepted source in the same minimal,
     # truth-blind child boundary and refuses owner-supplied prediction changes.
     expected_packet, expected_fingerprint = _prediction_packet(challenge)
@@ -458,6 +606,8 @@ def evaluate_and_sign(
             or canonical_bytes(expected_packet) != canonical_bytes(frozen.predictions)):
         raise ValueError("Frozen predictions do not reproduce from the accepted source")
     private_result = scorer(frozen.predictions, truth)
+    if benchmark_definition_digest(benchmark_definition, scorer) != definition_before:
+        raise ValueError("Scorer or benchmark definition changed during evaluation")
     if not isinstance(private_result, dict):
         raise ValueError("Evaluator returned an invalid private result")
     metrics = _aggregate_metrics(private_result)
@@ -477,6 +627,12 @@ def evaluate_and_sign(
         truth_commitment_sha256=challenge.truth_commitment_sha256,
         benchmark_definition_sha256=challenge.benchmark_definition_sha256,
         runtime_profile=challenge.runtime_profile,
+        isolation_profile="python_audit_reference_runner",
+        execution_environment_sha256=digest(canonical_bytes({
+            "profile": "python_audit_reference_runner",
+            "runtime_profile": challenge.runtime_profile,
+            "source_fingerprint": frozen.source_fingerprint,
+        })),
         case_count=challenge.case_count,
         family_count=len(by_family),
         issue_unit_count=metrics.true_positives + metrics.false_negatives,
@@ -491,8 +647,10 @@ def evaluate_and_sign(
             coverage_overclaims_max=0,
             protocol_errors_max=0,
         ),
-        engineering_benchmark_gate_passed=private_result.get("engineering_benchmark_gate_passed") is True,
-        independent_blind_replication=challenge.independent_evaluator,
+        # This in-repository helper is a defense-in-depth reference runner, not
+        # the external immutable kernel boundary required for a passing result.
+        engineering_benchmark_gate_passed=False,
+        independent_blind_replication=False,
         holdout_first_exposure=challenge.holdout_first_exposure,
         evaluator_truth_withheld=challenge.truth_withheld_from_predictor,
         evaluator_reexecuted_predictor=True,
@@ -511,6 +669,8 @@ def evaluate_and_sign(
             "rendered_fixtures_not_browser_execution",
             "no_live_search_measurement",
             "scorer_cannot_prove_evaluator_independence",
+            "python_audit_boundary_not_kernel_isolation",
+            "runtime_artifacts_not_cryptographically_verified",
             "benchmark_does_not_grant_autonomy",
         ],
     )

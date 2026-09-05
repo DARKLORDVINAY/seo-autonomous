@@ -3,6 +3,7 @@ from __future__ import annotations
 
 from functools import lru_cache
 from typing import Literal
+from urllib.parse import parse_qs, urlsplit
 
 from pydantic import Field, SecretStr, model_validator
 from pydantic_settings import BaseSettings, SettingsConfigDict
@@ -13,6 +14,7 @@ class Settings(BaseSettings):
 
     app_name: str = "Spiral Max SEO"
     environment: Literal["development", "test", "production"] = "development"
+    service_role: Literal["api", "worker", "utility"] = "api"
     database_url: str = "sqlite:///./seo-autonomous.db"
     autonomy_level: int = Field(default=1, ge=0, le=5)
     production_enabled: bool = False
@@ -54,6 +56,14 @@ class Settings(BaseSettings):
     benchmark_evaluator_key_id: str | None = Field(default=None, pattern=r"^[A-Za-z0-9][A-Za-z0-9._:-]{0,127}$")
     benchmark_expected_definition_sha256: str | None = Field(default=None, pattern=r"^[0-9a-f]{64}$")
     benchmark_expected_source_fingerprint: str | None = Field(default=None, pattern=r"^[0-9a-f]{64}$")
+    benchmark_expected_evaluation_id: str | None = Field(
+        default=None, pattern=r"^[0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$",
+    )
+    benchmark_expected_challenge_sha256: str | None = Field(default=None, pattern=r"^[0-9a-f]{64}$")
+    benchmark_expected_execution_environment_sha256: str | None = Field(
+        default=None, pattern=r"^[0-9a-f]{64}$",
+    )
+    benchmark_attestation_max_age_hours: int = Field(default=168, ge=1, le=720)
     otel_service_name: str = "seo-control-plane"
     otel_exporter_otlp_endpoint: str | None = None
 
@@ -70,6 +80,8 @@ class Settings(BaseSettings):
         tokens = [t.get_secret_value() for t in (self.api_token, self.approval_token, self.admin_token) if t]
         if len(tokens) != len(set(tokens)):
             raise ValueError("Agent, approval, and administrator tokens must be distinct capabilities")
+        if self.service_role == "worker" and tokens:
+            raise ValueError("Worker processes must not receive API, reviewer, or administrator bearer tokens")
         if self.production_enabled and self.shadow_mode:
             raise ValueError("Production execution cannot be enabled while shadow mode is active")
         if self.autonomy_level > 2:
@@ -79,12 +91,20 @@ class Settings(BaseSettings):
         if self.environment == "production":
             if not self.database_url.startswith(("postgresql://", "postgresql+psycopg://")):
                 raise ValueError("Production requires PostgreSQL")
-            if not self.api_token or len(self.api_token.get_secret_value()) < 32:
+            parsed_database = urlsplit(self.database_url)
+            if not parsed_database.hostname:
+                raise ValueError("Production PostgreSQL requires an explicit database host")
+            local_database_hosts = {"db", "localhost", "127.0.0.1", "::1"}
+            ssl_modes = parse_qs(parsed_database.query).get("sslmode", [])
+            if parsed_database.hostname not in local_database_hosts and ssl_modes != ["verify-full"]:
+                raise ValueError("Remote production PostgreSQL requires sslmode=verify-full")
+            if self.service_role == "api" and (not self.api_token or len(self.api_token.get_secret_value()) < 32):
                 raise ValueError("Production requires an API token of at least 32 characters")
             for name, token in (("API", self.api_token), ("approval", self.approval_token), ("administrator", self.admin_token)):
                 if token is not None and len(token.get_secret_value()) < 32:
                     raise ValueError(f"Production {name} tokens must contain at least 32 characters")
-            if self.production_enabled and (not self.approval_token or len(self.approval_token.get_secret_value()) < 32):
+            if (self.service_role == "api" and self.production_enabled
+                    and (not self.approval_token or len(self.approval_token.get_secret_value()) < 32)):
                 raise ValueError("Production mutations require a separate approval token of at least 32 characters")
         return self
 

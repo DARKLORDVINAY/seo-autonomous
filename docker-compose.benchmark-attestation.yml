@@ -1,0 +1,20 @@
+# Optional aggregate-attestation import surface. This mounts only the public
+# evaluator key into the API; never add it or human bearer tokens to the worker.
+services:
+  api:
+    environment:
+      BENCHMARK_EVALUATOR_PUBLIC_KEY_FILE: /run/secrets/benchmark-evaluator-public.pem
+      BENCHMARK_EVALUATOR_KEY_ID: ${BENCHMARK_EVALUATOR_KEY_ID:?Set the reviewed evaluator key ID}
+      BENCHMARK_EXPECTED_DEFINITION_SHA256: ${BENCHMARK_EXPECTED_DEFINITION_SHA256:?Pin the benchmark definition}
+      BENCHMARK_EXPECTED_SOURCE_FINGERPRINT: ${BENCHMARK_EXPECTED_SOURCE_FINGERPRINT:?Pin the detector source}
+      BENCHMARK_EXPECTED_EVALUATION_ID: ${BENCHMARK_EXPECTED_EVALUATION_ID:?Pin the intended evaluation UUID}
+      BENCHMARK_EXPECTED_CHALLENGE_SHA256: ${BENCHMARK_EXPECTED_CHALLENGE_SHA256:?Pin the signed challenge hash}
+      BENCHMARK_EXPECTED_EXECUTION_ENVIRONMENT_SHA256: ${BENCHMARK_EXPECTED_EXECUTION_ENVIRONMENT_SHA256:?Pin the immutable evaluator runtime/image}
+      BENCHMARK_ATTESTATION_MAX_AGE_HOURS: ${BENCHMARK_ATTESTATION_MAX_AGE_HOURS:-168}
+    volumes:
+      - type: bind
+        source: ${BENCHMARK_EVALUATOR_PUBLIC_KEY_HOST_FILE:?Set the reviewed evaluator public key path}
+        target: /run/secrets/benchmark-evaluator-public.pem
+        read_only: true
+        bind:
+          create_host_path: false

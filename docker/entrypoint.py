@@ -19,6 +19,8 @@ def database_url_from_environment() -> str:
 
 
 def verify_database_role() -> None:
+    """Fail before service exec unless runtime ACLs and schema match the image."""
+    from backend.app.db.readiness import verify_schema_revision
     from backend.app.db.session import make_engine
     from scripts.grant_runtime import verify_runtime_role
 
@@ -26,6 +28,7 @@ def verify_database_role() -> None:
     try:
         with engine.connect() as connection:
             verify_runtime_role(connection)
+            verify_schema_revision(connection)
     finally:
         engine.dispose()
 
@@ -35,6 +38,12 @@ def main(argv: list[str] | None = None) -> int:
     mode = args.pop(0) if args else "api"
     if mode not in {"api", "worker", "migrate", "bootstrap", "mcp", "preflight"}:
         raise ValueError("Unknown container service mode")
+    if mode in {"api", "worker"}:
+        # The executable role, not operator-controlled environment text, selects
+        # whether bearer capabilities are valid for this process.
+        os.environ["SERVICE_ROLE"] = mode
+    elif mode != "mcp":
+        os.environ["SERVICE_ROLE"] = "utility"
     if mode != "mcp":
         os.environ["DATABASE_URL"] = database_url_from_environment()
     if mode == "migrate":
@@ -56,7 +65,7 @@ def main(argv: list[str] | None = None) -> int:
             engine.dispose()
         print("Migrations and restricted runtime grants completed.")
         return 0
-    if mode in {"api", "bootstrap", "preflight"}:
+    if mode in {"api", "worker", "bootstrap", "preflight"}:
         verify_database_role()
     commands = {
         "api": [sys.executable, "-m", "uvicorn", "backend.app.main:app", "--host", "0.0.0.0", "--port", "8000", "--no-server-header"],

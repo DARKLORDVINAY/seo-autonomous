@@ -7,9 +7,6 @@ x-runtime-environment: &runtime-environment
   POSTGRES_DB: ${POSTGRES_DB:-seo}
   POSTGRES_USER: ${POSTGRES_APP_USER:-seo_app}
   POSTGRES_PASSWORD: ${POSTGRES_APP_PASSWORD:?Run python scripts/init_env.py first}
-  API_TOKEN: ${API_TOKEN:?Run python scripts/init_env.py first}
-  APPROVAL_TOKEN: ${APPROVAL_TOKEN:?Run python scripts/init_env.py first}
-  ADMIN_TOKEN: ${ADMIN_TOKEN:?Run python scripts/init_env.py first}
   AUTONOMY_LEVEL: ${AUTONOMY_LEVEL:-1}
   PRODUCTION_ENABLED: ${PRODUCTION_ENABLED:-false}
   SHADOW_MODE: ${SHADOW_MODE:-true}
@@ -37,10 +34,21 @@ x-runtime-environment: &runtime-environment
   WORDPRESS_URL: ${WORDPRESS_URL:-}
   WORDPRESS_USERNAME: ${WORDPRESS_USERNAME:-}
   WORDPRESS_APPLICATION_PASSWORD: ${WORDPRESS_APPLICATION_PASSWORD:-}
+
+x-api-environment: &api-environment
+  <<: *runtime-environment
+  SERVICE_ROLE: api
+  API_TOKEN: ${API_TOKEN:?Run python scripts/init_env.py first}
+  APPROVAL_TOKEN: ${APPROVAL_TOKEN:?Run python scripts/init_env.py first}
+  ADMIN_TOKEN: ${ADMIN_TOKEN:?Run python scripts/init_env.py first}
   BENCHMARK_EVALUATOR_PUBLIC_KEY_FILE: ${BENCHMARK_EVALUATOR_PUBLIC_KEY_FILE:-}
   BENCHMARK_EVALUATOR_KEY_ID: ${BENCHMARK_EVALUATOR_KEY_ID:-}
   BENCHMARK_EXPECTED_DEFINITION_SHA256: ${BENCHMARK_EXPECTED_DEFINITION_SHA256:-}
   BENCHMARK_EXPECTED_SOURCE_FINGERPRINT: ${BENCHMARK_EXPECTED_SOURCE_FINGERPRINT:-}
+  BENCHMARK_EXPECTED_EVALUATION_ID: ${BENCHMARK_EXPECTED_EVALUATION_ID:-}
+  BENCHMARK_EXPECTED_CHALLENGE_SHA256: ${BENCHMARK_EXPECTED_CHALLENGE_SHA256:-}
+  BENCHMARK_EXPECTED_EXECUTION_ENVIRONMENT_SHA256: ${BENCHMARK_EXPECTED_EXECUTION_ENVIRONMENT_SHA256:-}
+  BENCHMARK_ATTESTATION_MAX_AGE_HOURS: ${BENCHMARK_ATTESTATION_MAX_AGE_HOURS:-168}
 
 x-application: &application
   image: spiral-max-seo:local
@@ -104,7 +112,7 @@ services:
     <<: *application
     restart: unless-stopped
     command: [api]
-    environment: *runtime-environment
+    environment: *api-environment
     ports:
       - "127.0.0.1:${API_PORT:-8000}:8000"
     networks:
@@ -126,14 +134,16 @@ services:
     <<: *application
     restart: unless-stopped
     command: [worker]
-    environment: *runtime-environment
+    environment:
+      <<: *runtime-environment
+      SERVICE_ROLE: worker
     depends_on:
       db:
         condition: service_healthy
       migrate:
         condition: service_completed_successfully
     healthcheck:
-      test: [CMD, python, -m, backend.app.scheduler, --healthcheck]
+      test: [CMD, python, /app/docker/entrypoint.py, worker, --healthcheck]
       interval: 30s
       timeout: 5s
       retries: 3

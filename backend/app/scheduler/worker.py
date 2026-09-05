@@ -13,8 +13,10 @@ from zoneinfo import ZoneInfo
 from apscheduler.executors.pool import ThreadPoolExecutor
 from apscheduler.schedulers.blocking import BlockingScheduler
 from apscheduler.triggers.cron import CronTrigger
+from sqlalchemy import text
 
 from backend.app.config.settings import Settings, get_settings
+from backend.app.db.readiness import verify_schema_revision
 from backend.app.db.models import utcnow
 from backend.app.db.session import make_engine, make_session_factory
 from backend.app.scheduler.jobs import (
@@ -75,6 +77,34 @@ def heartbeat_healthy(path: Path = HEARTBEAT_PATH, *, max_age_seconds: int = 90)
         return False
 
 
+def database_healthy(settings: Settings) -> bool:
+    """Check that the scheduler can use this release's canonical database.
+
+    This is deliberately read-only. It prevents a live heartbeat from masking a
+    database outage or schema drift. Production additionally rechecks the
+    restricted runtime role so a privilege regression marks the worker unhealthy.
+    """
+    engine = None
+    try:
+        engine = make_engine(settings.database_url)
+        with engine.connect() as connection:
+            connection.execute(text("SELECT 1"))
+            verify_schema_revision(connection)
+            if settings.environment == "production":
+                from scripts.grant_runtime import verify_runtime_role
+                verify_runtime_role(connection)
+        return True
+    except Exception:
+        return False
+    finally:
+        if engine is not None:
+            engine.dispose()
+
+
+def worker_healthy(settings: Settings, path: Path = HEARTBEAT_PATH) -> bool:
+    return heartbeat_healthy(path) and database_healthy(settings)
+
+
 def build_scheduler(factory, settings: Settings, *, startup_catchup: bool = True) -> BlockingScheduler:
     timezone = ZoneInfo(settings.scheduler_timezone)
     scheduler = BlockingScheduler(timezone=timezone,
@@ -100,7 +130,10 @@ def main(argv: list[str] | None = None) -> int:
     parser.add_argument("--site-id", help="Limit --once to one registered site")
     args = parser.parse_args(argv)
     if args.healthcheck:
-        return 0 if heartbeat_healthy() else 1
+        try:
+            return 0 if worker_healthy(get_settings()) else 1
+        except Exception:
+            return 1
     if args.site_id and not args.once:
         parser.error("--site-id requires --once")
     engine = None
@@ -118,9 +151,10 @@ def main(argv: list[str] | None = None) -> int:
         configure_tracing()
         engine = make_engine(settings.database_url)
         factory = make_session_factory(engine)
-        if settings.environment == "production":
-            from scripts.grant_runtime import verify_runtime_role
-            with engine.connect() as connection:
+        with engine.connect() as connection:
+            verify_schema_revision(connection)
+            if settings.environment == "production":
+                from scripts.grant_runtime import verify_runtime_role
                 verify_runtime_role(connection)
         if args.once:
             results = run_scheduled_job(factory, settings, args.once, site_id=args.site_id)

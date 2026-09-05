@@ -301,7 +301,7 @@ async def test_private_benchmark_labels_are_redacted_from_api_agent_and_mcp_read
                 "high_critical_intercepted": True,
                 "zero_autonomous_production_changes": True,
                 "structural_benchmark_passed": False,
-                "level_2_eligible": False,
+                "level_2_eligible": True,
                 "unexpected_detections": [{"path": private_marker, "kind": "duplicate_title"}],
                 "missed_issues": [{"path": private_marker, "kind": "canonical_error"}],
                 "matches": [{"path": private_marker}],
@@ -320,10 +320,21 @@ async def test_private_benchmark_labels_are_redacted_from_api_agent_and_mcp_read
             preventative_change=private_marker,
             details_json={"error": {"path": private_marker, "kind": "canonical_error"}},
         ))
+        session.add(m.Action(
+            site_id=api_case.site_id,
+            kind="evaluate_lab_shadow_benchmark",
+            risk="LOW",
+            actor="sceptical-benchmark-evaluator",
+            reason="Test general action-history redaction",
+            idempotency_key="private-benchmark-action-redaction",
+            payload_json={"ground_truth_sha256": private_marker, "level_2_eligible": False},
+        ))
         session.commit()
+        raw_private_hash = session.get(m.Evidence, evidence_id).content_hash
         agent_packet = control.agent_evidence(session, api_case.site_id, [evidence_id])
         assert private_marker not in json.dumps(agent_packet)
         assert agent_packet[0]["content"]["private_case_results_redacted"] is True
+        assert agent_packet[0]["content"]["private_content_hash_redacted"] is True
         from backend.app.db.repositories.canonical import relevant_failures
         assert relevant_failures(session, api_case.site_id) == []
         assert relevant_failures(session, api_case.site_id, "lab_benchmark_false_negative") == []
@@ -331,13 +342,25 @@ async def test_private_benchmark_labels_are_redacted_from_api_agent_and_mcp_read
     evidence = api_case.request("GET", api_case.path(f"evidence/{evidence_id}"))
     assert evidence.status_code == 200
     assert private_marker not in evidence.text
+    assert evidence.json()["content_hash"] != raw_private_hash
     assert evidence.json()["content"]["aggregate"]["false_negatives"] == 2
+    assert "level_2_eligible" not in evidence.json()["content"]["aggregate"]
     assert evidence.json()["content"]["level_2_eligible"] is False
+    strategy = api_case.request("GET", api_case.path("strategy"))
+    strategy_evidence = next(item for item in strategy.json()["evidence"] if item["id"] == evidence_id)
+    assert "content" not in strategy_evidence
+    assert strategy_evidence["content_hash"] == evidence.json()["content_hash"]
+    assert raw_private_hash not in strategy.text
     failures = api_case.request("GET", api_case.path("failures"))
     assert failures.status_code == 200
     assert private_marker not in failures.text
     assert failures.json()["items"][0]["category"] == "benchmark_private_scoring_failure"
     assert failures.json()["items"][0]["details_json"]["private_case_results_redacted"] is True
+    actions = api_case.request("GET", api_case.path("actions"))
+    benchmark_action = next(item for item in actions.json()["items"]
+                            if item["kind"] == "evaluate_lab_shadow_benchmark")
+    assert private_marker not in actions.text
+    assert benchmark_action["payload_json"]["private_truth_commitment_redacted"] is True
 
     from seo_mcp.server import ControlClient, create_server
 
@@ -364,6 +387,9 @@ def test_admin_can_import_only_a_pinned_signed_aggregate_without_granting_author
     api_case.settings.benchmark_evaluator_key_id = "independent-test-key"
     api_case.settings.benchmark_expected_definition_sha256 = "f" * 64
     api_case.settings.benchmark_expected_source_fingerprint = "d" * 64
+    api_case.settings.benchmark_expected_evaluation_id = "bbbbbbbb-bbbb-4bbb-8bbb-bbbbbbbbbbbb"
+    api_case.settings.benchmark_expected_challenge_sha256 = "a" * 64
+    api_case.settings.benchmark_expected_execution_environment_sha256 = "1" * 64
     metrics = AggregateMetrics(
         true_positives=1,
         false_positives=0,
@@ -385,8 +411,8 @@ def test_admin_can_import_only_a_pinned_signed_aggregate_without_granting_author
     attestation = BenchmarkAttestation(
         schema_version="3.0",
         protocol="blind_holdout_exchange_v3",
-        evaluation_id="independent-api-test-01",
-        evaluator_id="independent-api-evaluator",
+        evaluation_id="bbbbbbbb-bbbb-4bbb-8bbb-bbbbbbbbbbbb",
+        evaluator_id="cccccccc-cccc-4ccc-8ccc-cccccccccccc",
         issued_at=datetime.now(timezone.utc) - timedelta(minutes=1),
         challenge_sha256="a" * 64,
         observations_sha256="b" * 64,
@@ -395,6 +421,8 @@ def test_admin_can_import_only_a_pinned_signed_aggregate_without_granting_author
         truth_commitment_sha256="e" * 64,
         benchmark_definition_sha256="f" * 64,
         runtime_profile="CPython 3.12 + requirements.lock.txt",
+        isolation_profile="python_audit_reference_runner",
+        execution_environment_sha256="1" * 64,
         case_count=2,
         family_count=1,
         issue_unit_count=1,
@@ -409,8 +437,8 @@ def test_admin_can_import_only_a_pinned_signed_aggregate_without_granting_author
             coverage_overclaims_max=0,
             protocol_errors_max=0,
         ),
-        engineering_benchmark_gate_passed=True,
-        independent_blind_replication=True,
+        engineering_benchmark_gate_passed=False,
+        independent_blind_replication=False,
         holdout_first_exposure=True,
         evaluator_truth_withheld=True,
         evaluator_reexecuted_predictor=True,
@@ -423,7 +451,12 @@ def test_admin_can_import_only_a_pinned_signed_aggregate_without_granting_author
         paid_api_calls=0,
         live_model_executed=False,
         level_2_eligible=False,
-        limitations=["structural_not_business_outcomes", "benchmark_does_not_grant_autonomy"],
+        limitations=[
+            "structural_not_business_outcomes",
+            "python_audit_boundary_not_kernel_isolation",
+            "runtime_artifacts_not_cryptographically_verified",
+            "benchmark_does_not_grant_autonomy",
+        ],
     )
 
     def signed(value):
@@ -453,7 +486,7 @@ def test_admin_can_import_only_a_pinned_signed_aggregate_without_granting_author
     assert replay.status_code == 201 and replay.json()["status"] == "existing"
     assert api_case.count(m.Action) == action_count
     conflicting = attestation.model_copy(deep=True)
-    conflicting.evaluator_id = "different-independent-evaluator"
+    conflicting.evaluator_id = "dddddddd-dddd-4ddd-8ddd-dddddddddddd"
     assert api_case.request("POST", endpoint, role="admin", json=signed(conflicting)).status_code == 409
     evidence = api_case.request("GET", api_case.path(f"evidence/{report['evidence_id']}"))
     assert evidence.status_code == 200
@@ -474,13 +507,23 @@ def test_admin_can_import_only_a_pinned_signed_aggregate_without_granting_author
     labelled["attestation"]["case_results"] = [{"path": "/private-answer/"}]
     assert api_case.request("POST", endpoint, role="admin", json=labelled).status_code == 422
     future = attestation.model_copy(deep=True)
-    future.evaluation_id = "independent-api-future-01"
+    future.evaluation_id = "eeeeeeee-eeee-4eee-8eee-eeeeeeeeeeee"
     future.issued_at = datetime.now(timezone.utc) + timedelta(days=1)
     assert api_case.request("POST", endpoint, role="admin", json=signed(future)).status_code == 422
+    stale = attestation.model_copy(deep=True)
+    stale.evaluation_id = "eeeeeeee-eeee-4eee-8eee-eeeeeeeeeeee"
+    stale.issued_at = datetime.now(timezone.utc) - timedelta(days=8)
+    assert api_case.request("POST", endpoint, role="admin", json=signed(stale)).status_code == 422
     different_release = attestation.model_copy(deep=True)
-    different_release.evaluation_id = "independent-api-other-release"
+    different_release.evaluation_id = "ffffffff-ffff-4fff-8fff-ffffffffffff"
     different_release.source_fingerprint = "9" * 64
     assert api_case.request("POST", endpoint, role="admin", json=signed(different_release)).status_code == 422
+    different_challenge = attestation.model_copy(deep=True)
+    different_challenge.challenge_sha256 = "9" * 64
+    assert api_case.request("POST", endpoint, role="admin", json=signed(different_challenge)).status_code == 422
+    different_environment = attestation.model_copy(deep=True)
+    different_environment.execution_environment_sha256 = "9" * 64
+    assert api_case.request("POST", endpoint, role="admin", json=signed(different_environment)).status_code == 422
 
 
 def test_internal_link_destination_must_be_inventoried_in_the_same_site(api_case):

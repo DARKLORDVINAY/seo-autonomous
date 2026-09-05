@@ -162,7 +162,7 @@ def strategy(site_id: UUID, session: DB, user: User):
     result = {}
     for key, model in collections.items():
         rows = session.scalars(select(model).where(model.site_id == sid).order_by(model.created_at.desc()).limit(100))
-        result[key] = [control.serialise(row) for row in rows]
+        result[key] = [control.public_evidence(row) if model is m.Evidence else control.serialise(row) for row in rows]
     # Large raw ingestion evidence is available through a dedicated scoped ID read, not repeated in every strategy response.
     for evidence in result["evidence"]:
         evidence.pop("content", None)
@@ -197,7 +197,8 @@ def list_view(site_id: UUID, view: str, session: DB, user: User,
         raise HTTPException(404, "Unknown canonical view")
     rows = session.scalars(select(model).where(model.site_id == str(site_id)).order_by(model.created_at.desc()).offset(offset).limit(limit))
     total = session.scalar(select(func.count()).select_from(model).where(model.site_id == str(site_id)))
-    serializer = control.public_failure if model is m.FailureCase else control.serialise
+    serializer = (control.public_failure if model is m.FailureCase else
+                  control.public_action if model is m.Action else control.serialise)
     return {"items": [serializer(r) for r in rows], "total": total, "offset": offset, "limit": limit, "has_more": offset + limit < total}
 
 

@@ -89,6 +89,7 @@ jobs:
         run: |
           docker run --rm --entrypoint python spiral-max-seo:local -c '
           from pathlib import Path
+          from backend.app.services import test_lab
           root = Path("/app")
           assert not (root / "benchmarks").exists()
           assert not (root / "test_lab").exists()
@@ -97,8 +98,13 @@ jobs:
           }
           assert {p.name for p in (root / "docker").iterdir()} == {"entrypoint.py"}
           forbidden = {"ground_truth.json", "pages.json", "benchmark_v2.py", "blind_evaluation_v3.py",
-                       "lab_operator_audit.py", "lab_rollback_drill.py", "public_lab_safe_summary.py", "test_lab.py"}
+                       "legacy_lab_evaluator.py", "lab_operator_audit.py", "lab_rollback_drill.py",
+                       "public_lab_safe_summary.py"}
           assert not any(path.name in forbidden for path in root.rglob("*"))
+          assert not (root / "scripts" / "test_lab.py").exists()
+          evaluator_symbols = {"_read_ground_truth", "_observed_overlap_pair", "_seed_facet_checks",
+                               "evaluate_frozen_packet", "run_benchmark"}
+          assert not evaluator_symbols.intersection(vars(test_lab))
           '
       - name: Start isolated fixture stack
         env:

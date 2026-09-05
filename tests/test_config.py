@@ -38,6 +38,27 @@ def test_production_reads_can_boot_without_write_authority():
     assert not config.production_enabled
 
 
+def test_production_worker_boots_without_human_bearer_capabilities():
+    config = Settings(_env_file=None, environment="production", service_role="worker",
+                      database_url="postgresql+psycopg://db/seo")
+    assert config.api_token is config.approval_token is config.admin_token is None
+
+
+def test_remote_production_database_requires_hostname_verified_tls():
+    with pytest.raises(ValidationError, match="sslmode=verify-full"):
+        Settings(_env_file=None, environment="production", service_role="worker",
+                 database_url="postgresql+psycopg://seo@database.example.test/seo?sslmode=require")
+    config = Settings(_env_file=None, environment="production", service_role="worker",
+                      database_url="postgresql+psycopg://seo@database.example.test/seo?sslmode=verify-full")
+    assert config.database_url.endswith("sslmode=verify-full")
+
+
+@pytest.mark.parametrize("field", ["api_token", "approval_token", "admin_token"])
+def test_worker_rejects_human_bearer_capabilities(field):
+    with pytest.raises(ValidationError, match="Worker processes must not receive"):
+        Settings(_env_file=None, service_role="worker", **{field: "x" * 40})
+
+
 def test_tokens_do_not_appear_in_repr():
     token = "token-with-private-secret"
     config = Settings(_env_file=None, api_token=token)

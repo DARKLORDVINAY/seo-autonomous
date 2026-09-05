@@ -36,6 +36,13 @@ configuration. Do not place an evaluator private key, truth corpus or detailed
 report on the host. With incomplete pins, the administrator-only import route
 fails closed; the scheduler, agents and MCP cannot invoke it.
 
+The base stack does not mount evaluator material. To enable aggregate import,
+set `BENCHMARK_EVALUATOR_PUBLIC_KEY_HOST_FILE` to the reviewed public key and
+start the API with the optional `docker-compose.benchmark-attestation.yml`
+overlay. It bind-mounts that public key read-only into the API only; the worker
+does not receive the key, benchmark-import settings, operator token, reviewer
+token or administrator token.
+
 `SEO_RELEASE_IMAGE` must identify an already-reviewed image by immutable
 `repository@sha256:...` or local `sha256:...` image ID. Pulling is disabled in the
 overlay. Build/retrieve that image through a reviewed supply-chain process;

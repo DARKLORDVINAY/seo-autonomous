@@ -16,7 +16,7 @@ unit identities stay in evaluator custody.
 | Custody | May contain | Must not contain |
 | --- | --- | --- |
 | Evaluator private store | truth, case/family labels, detailed score, signing key | production credentials |
-| Signed challenge | observation-only crawl/GSC/GA4 fixtures, opaque IDs, truth hash, accepted source hash | truth, expected outcomes, policy or authority fields |
+| Signed challenge | observation-only crawl/GSC/GA4 fixtures, opaque IDs, keyed truth commitment, accepted source hash | truth, commitment secret, expected outcomes, policy or authority fields |
 | Frozen owner response | signed challenge, deterministic predictions, byte commitments | truth, scorer, signing key, private results |
 | Public attestation | aggregate counts/rates, commitments, fixed limitation codes, safety invariants | cases, URLs, families, recommendations, free-form evaluator prose |
 | Runtime image/API/MCP | verified aggregate summary | corpus, Test Lab source labels, evaluator/operator scripts, raw benchmark failures |
@@ -41,8 +41,14 @@ the evaluator identity and process still require human due diligence.
    observation-only corpus and private truth. It signs a challenge committing to:
    the observation bytes, private-truth bytes, benchmark definition, accepted
    source fingerprint, CPython 3.12 runtime profile, first-exposure declaration
-   and a maximum 30-day validity window. The fingerprint includes the exact
-   dependency lock. The private truth never accompanies the challenge.
+   and a maximum 30-day validity window enforced at prediction and scoring. The truth commitment uses an
+   evaluator-retained 32–128 byte secret so enumerable labels cannot be tested
+   against a bare digest. The benchmark-definition digest binds the public
+   scoring definition to the scorer's module and callable source. That binding
+   does not authenticate mutable in-memory globals or installed artifacts. The
+   source fingerprint includes the dependency-lock text, but the local helper
+   does not prove that installed wheels match it. Neither truth nor the
+   commitment secret accompanies the challenge.
 3. The owner verifies the pinned key and runs the isolated deterministic worker:
 
    ```sh
@@ -55,8 +61,15 @@ the evaluator identity and process still require human due diligence.
 
    The output directory must not exist. It is created write-once and contains
    exactly the signed challenge, frozen predictions and their manifest. The child
-   process has a minimal filesystem, sanitized environment, no network, no shell,
-   no database/executor and bounded CPU, memory, files and output.
+   process stages bytes from one frozen source snapshot, uses a sanitized environment,
+   denies ordinary network, subprocess, outside-read and write operations through
+   a Python audit hook, and bounds CPU, memory, files and output. This is defense
+   in depth for source-pinned trusted detector code, not a kernel sandbox for
+   arbitrary hostile Python. A real blind run therefore requires an
+   evaluator-owned OS/container boundary with network disabled and no truth,
+   signing-key or evaluator-store mount in the predictor. The evaluator must pin
+   an immutable runtime/image and verify dependency artifacts before making a
+   reproducibility or truth-isolation claim.
 4. The evaluator verifies every commitment, independently reruns the accepted
    source in the same truth-blind child boundary, rejects any non-reproducible
    prediction, scores against private truth, and retains its detailed report.
@@ -67,14 +80,21 @@ the evaluator identity and process still require human due diligence.
    python scripts/blind_evaluation_v3.py verify-attestation \
      --attestation /exchange/in/signed-aggregate-attestation.json \
      --public-key /operator/pinned/evaluator-public.pem \
-     --key-id independently-agreed-key-id
+     --key-id independently-agreed-key-id \
+     --expected-definition-sha256 independently-recorded-definition-hash \
+     --expected-source-fingerprint owner-frozen-source-hash
    ```
 
 6. If later import is explicitly authorized, mount the evaluator public key
    read-only, configure `BENCHMARK_EVALUATOR_PUBLIC_KEY_FILE` and
    `BENCHMARK_EVALUATOR_KEY_ID`, and pin the preregistered
    `BENCHMARK_EXPECTED_DEFINITION_SHA256` and
-   `BENCHMARK_EXPECTED_SOURCE_FINGERPRINT`. Then submit the signed envelope to the
+   `BENCHMARK_EXPECTED_SOURCE_FINGERPRINT`. Also pin the one intended
+   `BENCHMARK_EXPECTED_EVALUATION_ID` and
+   `BENCHMARK_EXPECTED_CHALLENGE_SHA256`, plus the immutable runtime/image as
+   `BENCHMARK_EXPECTED_EXECUTION_ENVIRONMENT_SHA256`; the default import freshness window is
+   seven days and is independently bounded by
+   `BENCHMARK_ATTESTATION_MAX_AGE_HOURS`. Then submit the signed envelope to the
    administrator-only
    `POST /api/sites/{site_id}/benchmark-attestations` route. The idempotent route
    stores only a verified aggregate evidence row, its signature/key fingerprint
@@ -83,14 +103,17 @@ the evaluator identity and process still require human due diligence.
 
 ## Fail-closed checks
 
-- Strict schemas reject extra case fields such as `ground_truth`,
-  `expected_issues`, policy, budgets or autonomy.
-- Observation, challenge, prediction, truth, source and benchmark-definition
-  commitments are SHA-256 hashes of canonical JSON/source bytes.
+- Strict schemas recursively reject extra truth/authority keys such as
+  `ground_truth`, `groundTruth`, `expected_issues`, policy, budgets or autonomy,
+  including separator and case variants inside metadata, JSON-LD and issues.
+- Observation, challenge, prediction and source commitments are SHA-256 hashes
+  of canonical JSON/source bytes. Private truth uses keyed HMAC-SHA-256. The
+  benchmark-definition hash also commits the exact scorer module and callable.
 - The signed challenge binds source release, evaluator, validity window and
   first exposure before prediction.
-- Runtime import independently pins the evaluator key, benchmark-definition hash
-  and source fingerprint; a valid signature for another test or release fails.
+- Runtime import independently pins the evaluator key, benchmark-definition hash,
+  source fingerprint, exact evaluation and signed challenge, and rejects stale
+  attestations; a valid signature for another test or release fails.
 - The evaluator reruns the predictor; an owner-edited prediction is rejected even
   if the owner recomputes its local hash.
 - Attestation arithmetic is recomputed. A passing engineering result cannot carry
@@ -100,9 +123,12 @@ the evaluator identity and process still require human due diligence.
 - The public schema has no arbitrary prose, case, URL, family or recommendation
   fields. Its signature is verified before an aggregate is returned.
 - Runtime Docker build context excludes `benchmarks/`, `test_lab/` and all but
-  three required operational scripts. CI inspects the built image itself.
+  three required operational scripts. Legacy label reading/scoring is isolated
+  under `benchmarks/`; the runtime Test Lab service contains observation and
+  freezing only. CI inspects the built image and imported runtime symbols.
 - Historical v1 benchmark rows remain append-only for audit integrity, but API,
-  MCP and agent evidence paths expose only aggregate/generalized records.
+  MCP and agent evidence paths expose only aggregate/generalized records and a
+  hash of that public projection, never the private record hash.
 
 ## Leakage and overfitting policy
 
@@ -117,3 +143,15 @@ Benchmark success is synthetic structural evidence. It does not establish
 Google indexing, rankings, qualified conversion value, live-model quality,
 rollback safety on a durable host or causal benefit. Autonomy graduation remains
 a separate human decision supported by live shadow evidence and calibration.
+
+## Residual external verification boundary
+
+The repository supplies a protocol scaffold and defense-in-depth worker, not an
+independent evaluator or a certified sandbox. Importing the evaluator helper is
+side-effect tested not to load the detector, but it remains project-supplied
+Python. A genuine holdout result is acceptable only when an independent party
+reviews or reimplements the truth-holding harness, runs the predictor in a
+kernel-enforced boundary, keeps truth and signing material outside that boundary,
+and binds the attestation to an immutable interpreter/image plus verified
+dependency artifacts. Until that occurs, local protocol tests are engineering
+evidence only and `level_2_eligible` remains false.

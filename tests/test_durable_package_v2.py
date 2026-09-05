@@ -3,6 +3,7 @@ from __future__ import annotations
 
 import hashlib
 from pathlib import Path
+import re
 import subprocess
 from types import SimpleNamespace
 
@@ -18,6 +19,7 @@ from backend.app.main import readiness
 from scripts.backup_database import backup
 from scripts.bootstrap import migrate
 from scripts.deployment_preflight import checked_image
+from scripts.verify_backup import verify_backup_receipt
 
 
 def verification_settings(**changes):
@@ -145,6 +147,38 @@ def test_backup_refuses_unconfirmed_or_unsafe_targets(tmp_path):
     assert calls == []
 
 
+def test_backup_receipt_verifier_rechecks_private_pair_checksum_and_archive(tmp_path):
+    _, dump_run = fake_commands()
+    directory = tmp_path / "private"
+    receipt = backup("source", directory, writers_stopped=True, run=dump_run)
+    calls = []
+
+    def inspect(command, **kwargs):
+        calls.append((command, kwargs))
+        return SimpleNamespace(returncode=0)
+
+    receipt_path = directory / receipt["archive"].replace(".dump", ".json")
+    verified = verify_backup_receipt(receipt_path, run=inspect)
+    assert verified["status"] == "verified" and verified["restore_verified"] is False
+    assert verified["safe_to_restore_over_active_database"] is False
+    assert calls[0][0][:2] == ["pg_restore", "--list"]
+    assert calls[0][1]["stdout"] is subprocess.DEVNULL and calls[0][1]["stderr"] is subprocess.DEVNULL
+
+
+def test_backup_receipt_verifier_rejects_tampering_and_unsafe_paths(tmp_path):
+    _, dump_run = fake_commands()
+    directory = tmp_path / "private"
+    receipt = backup("source", directory, writers_stopped=True, run=dump_run)
+    receipt_path = directory / receipt["archive"].replace(".dump", ".json")
+    archive_path = directory / receipt["archive"]
+    archive_path.write_bytes(archive_path.read_bytes() + b"tampered")
+    with pytest.raises(ValueError, match="size differs"):
+        verify_backup_receipt(receipt_path, run=lambda *_args, **_kwargs: pytest.fail("must not parse tampered archive"))
+    archive_path.chmod(0o644)
+    with pytest.raises(ValueError, match="group/other"):
+        verify_backup_receipt(receipt_path)
+
+
 def test_verification_overlay_is_literal_not_environment_selected():
     overlay = Path("docker-compose.verification.yml").read_text()
     for expected in ('AUTONOMY_LEVEL: "1"', 'PRODUCTION_ENABLED: "false"', 'MAX_DAILY_ACTIONS: "0"',
@@ -152,6 +186,30 @@ def test_verification_overlay_is_literal_not_environment_selected():
                      'restart: "no"', 'pull_policy: never'):
         assert expected in overlay
     assert "${AUTONOMY_LEVEL" not in overlay and "${PRODUCTION_ENABLED" not in overlay
+
+
+def test_worker_compose_scope_has_no_human_bearer_or_benchmark_import_capability():
+    compose = Path("docker-compose.yml").read_text()
+    shared = compose.split("x-api-environment:", 1)[0]
+    worker = re.search(r"(?ms)^  worker:\n(.*?)(?=^  mcp:)", compose).group(1)
+    for name in ("API_TOKEN", "APPROVAL_TOKEN", "ADMIN_TOKEN", "BENCHMARK_EVALUATOR_PUBLIC_KEY_FILE"):
+        assert name not in shared
+        assert name not in worker
+    assert "SERVICE_ROLE: worker" in worker
+    api = re.search(r"(?ms)^x-api-environment:.*?(?=^x-application:)", compose).group(0)
+    assert all(name in api for name in ("API_TOKEN", "APPROVAL_TOKEN", "ADMIN_TOKEN"))
+    assert "test: [CMD, python, /app/docker/entrypoint.py, worker, --healthcheck]" in worker
+
+
+def test_optional_benchmark_key_mount_targets_api_only():
+    overlay = Path("docker-compose.benchmark-attestation.yml").read_text()
+    assert "  api:" in overlay and "  worker:" not in overlay
+    assert "BENCHMARK_EVALUATOR_PUBLIC_KEY_HOST_FILE" in overlay
+    assert "BENCHMARK_EXPECTED_EVALUATION_ID" in overlay
+    assert "BENCHMARK_EXPECTED_CHALLENGE_SHA256" in overlay
+    assert "BENCHMARK_EXPECTED_EXECUTION_ENVIRONMENT_SHA256" in overlay
+    assert "BENCHMARK_ATTESTATION_MAX_AGE_HOURS" in overlay
+    assert "read_only: true" in overlay and "create_host_path: false" in overlay
 
 
 def test_postgresql_metadata_trigger_uses_dialect_escaped_percent():

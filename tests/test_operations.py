@@ -19,6 +19,7 @@ from backend.app.db.session import make_engine, make_session_factory
 from backend.app.scheduler import jobs, worker
 from backend.app.scheduler.locking import LeaseLost, fenced_site_work, site_lease_key
 from backend.app.services import control
+from docker import entrypoint
 from docker.entrypoint import database_url_from_environment
 from scripts.bootstrap import bootstrap, migrate
 from scripts.grant_runtime import grant_runtime_privileges, verify_runtime_role
@@ -248,6 +249,21 @@ def test_worker_heartbeat_has_bounded_age(tmp_path):
     assert not worker.heartbeat_healthy(path)
 
 
+def test_worker_health_requires_database_and_current_migration_head(tmp_path):
+    path = tmp_path / "heartbeat.json"
+    settings = local_settings(tmp_path)
+    migrate(settings.database_url)
+    worker.write_heartbeat(path)
+    assert worker.worker_healthy(settings, path)
+    engine = make_engine(settings.database_url)
+    try:
+        with engine.begin() as connection:
+            connection.execute(text("UPDATE alembic_version SET version_num='stale_release'"))
+    finally:
+        engine.dispose()
+    assert not worker.worker_healthy(settings, path)
+
+
 def test_daily_dispatch_preserves_core_config_and_takes_no_second_lease(operations_db, monkeypatch):
     settings, factory, site_id = operations_db
     now = datetime(2026, 9, 1, 5, tzinfo=timezone.utc)
@@ -275,6 +291,22 @@ def test_runtime_database_url_handles_reserved_password_characters(monkeypatch):
     parsed = make_url(database_url_from_environment())
     assert parsed.username == "seo_app" and parsed.password == password
     assert parsed.host == "db" and parsed.database == "seo"
+
+
+def test_worker_entrypoint_forces_non_bearer_service_role(monkeypatch):
+    monkeypatch.setenv("DATABASE_URL", "sqlite:///entrypoint-test.sqlite3")
+    monkeypatch.setenv("SERVICE_ROLE", "api")
+    gates = []
+
+    def stop_exec(*_):
+        raise RuntimeError("exec intercepted")
+
+    monkeypatch.setattr(entrypoint, "verify_database_role", lambda: gates.append("runtime-database"))
+    monkeypatch.setattr(entrypoint.os, "execv", stop_exec)
+    with pytest.raises(RuntimeError, match="exec intercepted"):
+        entrypoint.main(["worker"])
+    assert os.environ["SERVICE_ROLE"] == "worker"
+    assert gates == ["runtime-database"]
 
 
 def test_sqlite_is_not_treated_as_a_postgres_permissions_gate(tmp_path):

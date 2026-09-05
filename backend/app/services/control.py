@@ -27,7 +27,7 @@ PRIVATE_BENCHMARK_FAILURE_PREFIX = "lab_benchmark_"
 SAFE_BENCHMARK_ASSESSMENT_FIELDS = frozenset({
     "true_positives", "false_positives", "false_negatives", "precision", "recall",
     "correct_no_action", "false_no_action", "coverage_complete", "high_critical_intercepted",
-    "zero_autonomous_production_changes", "structural_benchmark_passed", "level_2_eligible",
+    "zero_autonomous_production_changes", "structural_benchmark_passed",
 })
 
 
@@ -59,6 +59,19 @@ def public_failure(record: m.FailureCase) -> dict:
     return result
 
 
+def public_action(record: m.Action) -> dict:
+    """Remove evaluator-private commitments from general action history."""
+    result = serialise(record)
+    if record.kind == "evaluate_lab_shadow_benchmark":
+        payload = dict(record.payload_json) if isinstance(record.payload_json, dict) else {}
+        payload.pop("ground_truth_sha256", None)
+        result["payload_json"] = {
+            **payload,
+            "private_truth_commitment_redacted": True,
+        }
+    return result
+
+
 def public_evidence(record: m.Evidence) -> dict:
     """Return ordinary evidence verbatim, but only aggregates for benchmark truth."""
     result = serialise(record)
@@ -82,19 +95,29 @@ def public_evidence(record: m.Evidence) -> dict:
     }
     # Historical labelled rows remain append-only canonical audit records. They
     # are never replayed into agents/API/MCP; only bounded aggregate outcomes are.
+    public_source = "lab_benchmark:aggregate-redacted"
+    public_content = {
+        "schema_version": version,
+        "scope": "aggregate_only_private_benchmark",
+        "aggregate": aggregate,
+        "autonomy_level": 1,
+        "production_enabled": False,
+        "production_write_budget": 0,
+        "paid_api_calls": 0,
+        "level_2_eligible": False,
+        "private_case_results_redacted": True,
+        "private_content_hash_redacted": True,
+    }
+    # The raw record hash can itself disclose a small, enumerable answer set.
+    # General read surfaces receive a hash of this public projection only.
     result.update({
-        "source": "lab_benchmark:aggregate-redacted",
-        "content": {
-            "schema_version": version,
-            "scope": "aggregate_only_private_benchmark",
-            "aggregate": aggregate,
-            "autonomy_level": 1,
-            "production_enabled": False,
-            "production_write_budget": 0,
-            "paid_api_calls": 0,
-            "level_2_eligible": False,
-            "private_case_results_redacted": True,
-        },
+        "source": public_source,
+        "content": public_content,
+        "content_hash": stable_hash({
+            "source": public_source,
+            "source_type": "benchmark_aggregate",
+            "content": public_content,
+        }),
     })
     return result
 

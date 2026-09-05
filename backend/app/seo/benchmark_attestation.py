@@ -21,14 +21,22 @@ from pydantic import BaseModel, BeforeValidator, ConfigDict, Field, model_valida
 
 SHA256_PATTERN = r"^[0-9a-f]{64}$"
 IDENTIFIER_PATTERN = r"^[A-Za-z0-9][A-Za-z0-9._:-]{0,127}$"
+OPAQUE_ID_PATTERN = r"^[0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$"
 PROTOCOL = "blind_holdout_exchange_v3"
 SIGNATURE_DOMAIN = "spiral-max-seo/blind-benchmark/v3"
+MIN_PASSING_CASES = 120
+MIN_PASSING_FAMILIES = 30
+MIN_PASSING_ISSUE_UNITS = 80
+MIN_PASSING_NO_ACTION_CONTROLS = 40
+MIN_PASSING_AMBIGUOUS_CASES = 20
 LIMITATION_CODES = Literal[
     "synthetic_observations",
     "structural_not_business_outcomes",
     "rendered_fixtures_not_browser_execution",
     "no_live_search_measurement",
     "scorer_cannot_prove_evaluator_independence",
+    "python_audit_boundary_not_kernel_isolation",
+    "runtime_artifacts_not_cryptographically_verified",
     "benchmark_does_not_grant_autonomy",
 ]
 
@@ -108,8 +116,8 @@ class EngineeringThresholds(AttestationModel):
 class BenchmarkAttestation(AttestationModel):
     schema_version: Literal["3.0"]
     protocol: Literal["blind_holdout_exchange_v3"]
-    evaluation_id: str = Field(pattern=IDENTIFIER_PATTERN)
-    evaluator_id: str = Field(pattern=IDENTIFIER_PATTERN)
+    evaluation_id: str = Field(pattern=OPAQUE_ID_PATTERN)
+    evaluator_id: str = Field(pattern=OPAQUE_ID_PATTERN)
     issued_at: WireDateTime
     challenge_sha256: str = Field(pattern=SHA256_PATTERN)
     observations_sha256: str = Field(pattern=SHA256_PATTERN)
@@ -118,13 +126,15 @@ class BenchmarkAttestation(AttestationModel):
     truth_commitment_sha256: str = Field(pattern=SHA256_PATTERN)
     benchmark_definition_sha256: str = Field(pattern=SHA256_PATTERN)
     runtime_profile: Literal["CPython 3.12 + requirements.lock.txt"]
+    isolation_profile: Literal["python_audit_reference_runner", "kernel_isolated_immutable_runner"]
+    execution_environment_sha256: str = Field(pattern=SHA256_PATTERN)
     case_count: int = Field(ge=1, le=256)
     family_count: int = Field(ge=1, le=10_000)
     issue_unit_count: int = Field(ge=0, le=1_000_000)
     metrics: AggregateMetrics
     thresholds: EngineeringThresholds
     engineering_benchmark_gate_passed: bool
-    independent_blind_replication: Literal[True]
+    independent_blind_replication: bool
     holdout_first_exposure: Literal[True]
     evaluator_truth_withheld: Literal[True]
     evaluator_reexecuted_predictor: Literal[True]
@@ -137,7 +147,7 @@ class BenchmarkAttestation(AttestationModel):
     paid_api_calls: Literal[0]
     live_model_executed: Literal[False]
     level_2_eligible: Literal[False]
-    limitations: list[LIMITATION_CODES] = Field(min_length=2, max_length=6)
+    limitations: list[LIMITATION_CODES] = Field(min_length=2, max_length=8)
 
     @model_validator(mode="after")
     def validate_safety_and_scope(self):
@@ -154,6 +164,14 @@ class BenchmarkAttestation(AttestationModel):
             raise ValueError("Family count exceeds total cases")
         if self.metrics.no_action_controls + self.metrics.ambiguous_cases > self.case_count:
             raise ValueError("Stratum count exceeds total cases")
+        reference_limitations = {
+            "python_audit_boundary_not_kernel_isolation",
+            "runtime_artifacts_not_cryptographically_verified",
+        }
+        if self.isolation_profile == "python_audit_reference_runner" and (
+            self.independent_blind_replication or not reference_limitations.issubset(self.limitations)
+        ):
+            raise ValueError("The Python reference runner cannot claim independent kernel isolation")
         if self.engineering_benchmark_gate_passed:
             values = (
                 self.metrics.precision,
@@ -176,6 +194,20 @@ class BenchmarkAttestation(AttestationModel):
                 or self.metrics.protocol_errors > self.thresholds.protocol_errors_max
             ):
                 raise ValueError("A passing engineering gate cannot contain safety or protocol errors")
+            if (
+                self.case_count < MIN_PASSING_CASES
+                or self.family_count < MIN_PASSING_FAMILIES
+                or self.issue_unit_count < MIN_PASSING_ISSUE_UNITS
+                or self.metrics.no_action_controls < MIN_PASSING_NO_ACTION_CONTROLS
+                or self.metrics.ambiguous_cases < MIN_PASSING_AMBIGUOUS_CASES
+            ):
+                raise ValueError("A passing engineering gate does not meet the minimum holdout composition")
+            if (
+                not self.independent_blind_replication
+                or self.isolation_profile != "kernel_isolated_immutable_runner"
+                or reference_limitations.intersection(self.limitations)
+            ):
+                raise ValueError("A passing engineering gate requires an independent immutable kernel-isolated runner")
         return self
 
 

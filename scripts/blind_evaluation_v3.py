@@ -35,6 +35,8 @@ def main(argv: list[str] | None = None) -> int:
     verify.add_argument("--attestation", type=Path, required=True)
     verify.add_argument("--public-key", type=Path, required=True)
     verify.add_argument("--key-id", required=True)
+    verify.add_argument("--expected-definition-sha256", required=True)
+    verify.add_argument("--expected-source-fingerprint", required=True)
     args = parser.parse_args(argv)
     try:
         if args.operation == "fingerprint":
@@ -58,6 +60,9 @@ def main(argv: list[str] | None = None) -> int:
             attestation = verify_signed_attestation(
                 _json(args.attestation), args.public_key.read_bytes(), expected_key_id=args.key_id,
             )
+            if (attestation.benchmark_definition_sha256 != args.expected_definition_sha256
+                    or attestation.source_fingerprint != args.expected_source_fingerprint):
+                raise ValueError("Attestation differs from the preregistered definition or source release")
             result = {**public_attestation_summary(attestation), "signature_verified": True}
         print(json.dumps(result, sort_keys=True, ensure_ascii=False))
         return 0
