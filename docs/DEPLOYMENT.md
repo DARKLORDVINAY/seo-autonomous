@@ -45,6 +45,8 @@ The API binds to `127.0.0.1:8000`; PostgreSQL has no published host port. The da
 
 Compose waits for PostgreSQL health and successful completion of the one-shot migration service before starting the API or worker. This uses the documented [Compose dependency conditions](https://docs.docker.com/compose/how-tos/startup-order/). The API readiness check requires the exact migration head shipped with the image. The worker health check verifies that its scheduler heartbeat is recent; review job records separately for successful observations.
 
+Production `bootstrap --demo` and `bootstrap --domain` use the restricted API login and verify the current schema and API role before site setup. They do not run migrations. Apply schema changes separately through the guarded owner migration path; development/test bootstrap still applies local migrations automatically.
+
 The verification overlay selects every application service with the same
 immutable `SEO_RELEASE_IMAGE` digest and injects that selector into `migrate`.
 Before constructing the owner database URL or invoking Alembic, the guarded

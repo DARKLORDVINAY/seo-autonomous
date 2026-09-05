@@ -1,4 +1,4 @@
-"""Apply migrations and explicitly register one shadow site or labelled offline demo."""
+"""Register one shadow site or offline demo; run owner migrations only when selected."""
 from __future__ import annotations
 
 import argparse
@@ -18,6 +18,7 @@ from sqlalchemy.engine import Connection
 sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
 from backend.app.config.settings import Settings
 from backend.app.db import models as m
+from backend.app.db.readiness import verify_database_readiness
 from backend.app.db.session import make_engine, make_session_factory
 from backend.app.services import control
 from scripts.deployment_preflight import (
@@ -71,12 +72,18 @@ def bootstrap(
         if parsed.path not in ("", "/") or parsed.query or parsed.fragment:
             raise ValueError("Register a site origin, without a path, query, or fragment")
         base_url = validate_url(base_url, fixture=False).rstrip("/")
-    migrate(settings.database_url, environment=settings.environment)
+    if migrate_only or settings.environment != "production":
+        migrate(settings.database_url, environment=settings.environment)
     if migrate_only:
         return {"status": "migrated"}
     engine = make_engine(settings.database_url, environment=settings.environment)
     try:
         with make_session_factory(engine)() as session:
+            if settings.environment == "production":
+                # Production registration uses the restricted API role after a
+                # separate owner migration. Check this same connection before
+                # any site access; never request owner pins or alter the schema.
+                verify_database_readiness(session.connection(), environment="production", profile="api")
             site = session.scalar(select(m.Site).where(m.Site.base_url == base_url))
             created = site is None
             if site is None:
