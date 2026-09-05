@@ -1,7 +1,59 @@
+from pathlib import Path
+import re
+
 import pytest
 from pydantic import ValidationError
 
 from backend.app.config.settings import Settings
+
+
+BENCHMARK_PINS = {
+    "benchmark_evaluator_key_id": "independent-test-key",
+    "benchmark_expected_definition_sha256": "a" * 64,
+    "benchmark_expected_source_fingerprint": "b" * 64,
+    "benchmark_expected_evaluation_id": "bbbbbbbb-bbbb-4bbb-8bbb-bbbbbbbbbbbb",
+    "benchmark_expected_challenge_sha256": "c" * 64,
+    "benchmark_expected_observations_sha256": "d" * 64,
+    "benchmark_expected_predictions_sha256": "e" * 64,
+    "benchmark_expected_truth_commitment_sha256": "f" * 64,
+    "benchmark_expected_execution_environment_sha256": "1" * 64,
+}
+
+
+def test_base_compose_optional_benchmark_defaults_allow_api_settings(monkeypatch):
+    # Exercise the base stack's declared benchmark defaults through the real
+    # Settings parser. Compose startup itself is checked against Docker in CI.
+    for name in Settings.model_fields:
+        if name.startswith("benchmark_"):
+            monkeypatch.delenv(name.upper(), raising=False)
+    compose = (Path(__file__).resolve().parents[1] / "docker-compose.yml").read_text()
+    api_and_shared = compose.split("x-worker-environment:", 1)[0]
+    for name, expression in re.findall(r"^  (BENCHMARK_\w+): (.+)$", api_and_shared, re.MULTILINE):
+        default = re.fullmatch(r"\$\{\w+:-([^}]*)\}", expression)
+        assert default is not None, f"Unexpected base-stack benchmark expression for {name}"
+        monkeypatch.setenv(name, default.group(1))
+    config = Settings(
+        _env_file=None, environment="production", service_role="api",
+        database_url="postgresql+psycopg://seo_api@db/seo",
+        api_token="a" * 32, approval_token="b" * 32, admin_token="c" * 32,
+    )
+    assert all(getattr(config, name) is None for name in BENCHMARK_PINS)
+    assert config.benchmark_evaluator_public_key_file is None
+    assert not config.production_enabled
+
+
+@pytest.mark.parametrize("field", BENCHMARK_PINS)
+@pytest.mark.parametrize("value", ["", "malformed pin!"])
+def test_explicit_benchmark_pins_reject_empty_or_malformed_values(field, value):
+    with pytest.raises(ValidationError) as error:
+        Settings(_env_file=None, **{field: value})
+    assert any(item["loc"] == (field,) and item["type"] == "string_pattern_mismatch"
+               for item in error.value.errors())
+
+
+def test_explicit_valid_benchmark_pins_remain_accepted():
+    config = Settings(_env_file=None, **BENCHMARK_PINS)
+    assert all(getattr(config, name) == value for name, value in BENCHMARK_PINS.items())
 
 
 def test_defaults_have_no_production_mutation_authority():

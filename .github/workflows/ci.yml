@@ -164,6 +164,9 @@ jobs:
           npx playwright install --with-deps chromium
           node scripts/check_dashboard.cjs
           node scripts/check_test_lab.cjs
+      - name: Collect sanitized startup failure diagnostics
+        if: failure() && hashFiles('.env') != ''
+        run: python scripts/collect_ci_startup_diagnostics.py
       - name: Retain dashboard screenshots
         if: always()
         uses: actions/upload-artifact@v4
@@ -173,6 +176,7 @@ jobs:
             artifacts/dashboard-*.png
             artifacts/test-lab-*.png
             artifacts/test-results.xml
+            artifacts/compose-startup-diagnostics.json
           if-no-files-found: ignore
       - name: Stop isolated test stack
         if: always() && hashFiles('.env') != ''
