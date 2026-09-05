@@ -78,6 +78,15 @@
       "production_migration_identity_gate": "locally_verified_preconnection_paths; actual_postgresql_and_container_pending",
       "backup_restore": "atomic_bundle_and_verifier_locally_verified; actual_postgresql_restore_pending"
     },
+    "canonical_graph_audit": {
+      "status": "legacy_debt_identified_append_only_correction_required",
+      "active_evidence_rows": 41,
+      "current_compact_hash_matches": 36,
+      "legacy_spaced_json_hash_rows": 4,
+      "partial_content_hash_rows": 1,
+      "claim_json_without_relational_link_rows": 1,
+      "policy": "Do not rewrite historical append-only rows. Record exact legacy schemes, append fully bound replacement evidence, add the missing relation, and scope receipts to the verified delta until a full graph re-audit passes."
+    },
     "first_ci_failure_preserved": "864 passed; five PostgreSQL setup errors revealed raw-driver percent escaping in trigger helper; corrected and retested",
     "holdout_status": "failed_first_run_frozen_disclosed_and_retired; not used for v3 tuning; one inherited first-PR CI replay excluded and routine replay removed",
     "detector_development_v3": {
@@ -354,7 +363,7 @@
     "detector-development v3 source-to-destination, canonical-cycle, robots-intent, soft-404, sitemap and graph evidence gates",
     "48-case development split training diagnostic reached 36 TP, 0 FP/FN and 18/18 NO-ACTION controls; explicitly not blind evidence"
   ],
-  "updated_at": "2026-09-04T18:12:55Z",
+  "updated_at": "2026-09-04T18:36:30Z",
   "phase_status": {
     "0": "documentation and capability checks complete",
     "1": "foundation and actual PostgreSQL/container CI passed; durable deployment pending",

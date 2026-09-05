@@ -65,6 +65,22 @@ archive-root-relative and contain no parent traversal. The committed mission
 document labels earlier remote CI by exact scope; the canonical database and
 latest recovery receipt remain authoritative for post-commit state.
 
+### Canonical graph debt
+
+A full-graph recovery audit then found that four historical Evidence rows use
+the earlier spaced-JSON hash serialization rather than the current compact
+serialization. A fifth historical Evidence row binds only its nested
+observation and leaves outer authority/activity fields outside its stored hash.
+One Claim also declared an Evidence ID in JSON without the corresponding
+relational `ClaimEvidence` edge.
+
+These are retained failures, not silently normalized. The recovery checkpoint
+records the exact historical hash schemes and digests, appends fully bound
+replacement Evidence, and adds the missing relational edge without rewriting
+the Claim. Receipt flags state whether they cover the latest corrective delta or
+the full graph. The historical partial-content hash remains explicitly invalid
+for full-content integrity even though its replacement is valid.
+
 ## Material hardening
 
 - Benchmark attestations now bind observations, predictions and truth
