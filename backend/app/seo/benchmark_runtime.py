@@ -147,7 +147,13 @@ def predict_case(value: Any) -> dict[str, Any]:
                 "uncertainty": ["fixture_processing_failed"], "error": type(exc).__name__}
 
 
-def predict_cases(cases: Any) -> dict[str, Any]:
+def validate_observation_cases(cases: Any) -> list[dict[str, Any]]:
+    """Validate a bounded observation-only challenge without scoring it.
+
+    Evaluator-private labels and authority fields are deliberately outside this
+    contract.  Returning the original JSON-compatible packets (rather than the
+    parsed domain objects) keeps the byte commitment stable across processes.
+    """
     if not isinstance(cases, list) or not 0 < len(cases) <= MAX_CASES:
         raise ValueError("Case collection budget exceeded")
     identifiers = [case.get("case_id") for case in cases if isinstance(case, dict)]
@@ -155,6 +161,13 @@ def predict_cases(cases: Any) -> dict[str, Any]:
         raise ValueError("Case identifiers required")
     if len(set(identifiers)) != len(identifiers):
         raise ValueError("Case identifiers must be unique")
+    for case in cases:
+        _validate_case(case)
+    return cases
+
+
+def predict_cases(cases: Any) -> dict[str, Any]:
+    validate_observation_cases(cases)
     return {
         "schema_version": 2, "cases": [predict_case(case) for case in cases],
         "autonomy_level": 1, "production_enabled": False,

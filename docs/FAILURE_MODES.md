@@ -18,6 +18,7 @@
 | Rate limit / network error | Bounded safe-read retry; paid live POST and mutation are not blindly retried |
 | Poor prediction calibration | Remove affected earned categories; preserve human approval requirement; no automatic promotion |
 | Failed code deployment | Stop rollout, retain previous release/DB backup, diagnose with CI and health checks; no model deployment tool |
+| Blind benchmark leak, replay or edited response | Retire any exposed holdout; reject unsigned/tampered or non-reproducible packets; preserve only a signed aggregate; never infer Level 2 eligibility |
 
 Every materially wrong prediction or harmful action should record predicted/actual outcome, magnitude where known, cause, incorrect assumption, missing evidence, responsible agent, detection method and preventive guardrail change. The initial runtime loads prior canonical failures before proposing similar actions. Some failure records legitimately say the root cause is unknown pending investigation.
 

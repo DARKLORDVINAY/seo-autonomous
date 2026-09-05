@@ -8,6 +8,8 @@ from __future__ import annotations
 
 import asyncio
 from datetime import timedelta
+import math
+import re
 from urllib.parse import urljoin, urlsplit
 from uuid import uuid4
 
@@ -21,10 +23,80 @@ from backend.app.integrations.common import ObservationBatch
 from backend.app.services.measurement import evaluate_due_experiments
 
 OBJECTIVE = "Maximise incremental qualified organic conversion value"
+PRIVATE_BENCHMARK_FAILURE_PREFIX = "lab_benchmark_"
+SAFE_BENCHMARK_ASSESSMENT_FIELDS = frozenset({
+    "true_positives", "false_positives", "false_negatives", "precision", "recall",
+    "correct_no_action", "false_no_action", "coverage_complete", "high_critical_intercepted",
+    "zero_autonomous_production_changes", "structural_benchmark_passed", "level_2_eligible",
+})
 
 
 def serialise(record) -> dict:
     return {column.key: getattr(record, column.key) for column in inspect(record).mapper.column_attrs}
+
+
+def public_failure(record: m.FailureCase) -> dict:
+    """Hide evaluator-private case identity while retaining the learning signal."""
+    result = serialise(record)
+    if not record.category.startswith(PRIVATE_BENCHMARK_FAILURE_PREFIX):
+        return result
+    result.update({
+        "category": "benchmark_private_scoring_failure",
+        "predicted": "Match the independently preregistered benchmark within its engineering thresholds",
+        "actual": "At least one private benchmark unit was scored incorrectly; case identity is evaluator-only",
+        "root_cause": "A detector precision or coverage gap was reported by the private evaluator",
+        "incorrect_assumption": "The detector generalized to every private benchmark unit",
+        "missing_evidence": "Case-level evidence is intentionally unavailable to runtime and model consumers",
+        "agent_responsible": "deterministic-observer",
+        "detection_method": "Signed private benchmark evaluation",
+        "preventative_change": "Use aggregate evidence and a new independent holdout; do not tune on private case identity",
+        "details_json": {
+            "private_case_results_redacted": True,
+            "excluded_from_live_calibration": True,
+            "level_2_eligible": False,
+        },
+    })
+    return result
+
+
+def public_evidence(record: m.Evidence) -> dict:
+    """Return ordinary evidence verbatim, but only aggregates for benchmark truth."""
+    result = serialise(record)
+    if record.source_type != "lab_benchmark":
+        return result
+    content = record.content if isinstance(record.content, dict) else {}
+    assessment = content.get("assessment") if isinstance(content.get("assessment"), dict) else {}
+    version = content.get("schema_version")
+    if not ((type(version) is int and 0 <= version <= 100) or (
+        isinstance(version, str) and re.fullmatch(r"[0-9]{1,3}(?:\.[0-9]{1,3})?", version)
+    )):
+        version = None
+    aggregate = {
+        key: assessment[key]
+        for key in SAFE_BENCHMARK_ASSESSMENT_FIELDS
+        if key in assessment and (
+            assessment[key] is None
+            or type(assessment[key]) in {bool, int}
+            or (type(assessment[key]) is float and math.isfinite(assessment[key]))
+        )
+    }
+    # Historical labelled rows remain append-only canonical audit records. They
+    # are never replayed into agents/API/MCP; only bounded aggregate outcomes are.
+    result.update({
+        "source": "lab_benchmark:aggregate-redacted",
+        "content": {
+            "schema_version": version,
+            "scope": "aggregate_only_private_benchmark",
+            "aggregate": aggregate,
+            "autonomy_level": 1,
+            "production_enabled": False,
+            "production_write_budget": 0,
+            "paid_api_calls": 0,
+            "level_2_eligible": False,
+            "private_case_results_redacted": True,
+        },
+    })
+    return result
 
 
 def site_record(session: Session, site_id: str) -> m.Site:
@@ -341,12 +413,23 @@ def agent_evidence(session: Session, site_id: str, evidence_ids: list[str]) -> l
     result = []
     for evidence_id in evidence_ids[:12]:
         evidence = scoped_record(session, m.Evidence, site_id, evidence_id)
-        content = evidence.content
+        public = public_evidence(evidence)
+        content = public["content"]
+        if evidence.source_type == "lab_benchmark":
+            result.append({
+                "id": evidence.id,
+                "source": public["source"],
+                "source_type": "benchmark_aggregate",
+                "source_trust": "trusted_measurement",
+                "observed_at": evidence.observed_at.isoformat(),
+                "content": content,
+            })
+            continue
         # Keep collector provenance and an explicit bounded sample; raw full records remain in canonical DB.
         sampled = {k: v for k, v in content.items() if k not in {"rows", "snapshots"}}
         rows = content.get("rows", content.get("snapshots", []))
         sampled.update({"sample": rows[:12], "total_records": len(rows), "sample_is_complete": len(rows) <= 12})
-        result.append({"id": evidence.id, "source": evidence.source, "source_type": evidence.source_type,
+        result.append({"id": evidence.id, "source": public["source"], "source_type": evidence.source_type,
                        "source_trust": "fixture" if evidence.is_fixture else (
                            "trusted_operator" if evidence.source_type == "brand_facts" and evidence.owner == "site-administrator" else
                            "untrusted_external" if evidence.source_type in {"crawl", "serp", "ai_search"} else "trusted_measurement"),

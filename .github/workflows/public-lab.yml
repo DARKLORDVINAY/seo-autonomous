@@ -90,18 +90,19 @@ jobs:
           node scripts/check_test_lab.cjs
         env:
           LAB_PUBLIC_URL: https://seo-test-lab.pages.dev
-      - name: Export disposable canonical state for audit only
+      - name: Export aggregate-only public observation receipt
         if: always()
         run: |
-          mkdir -p artifacts
-          docker exec "${{ job.services.postgres.id }}" pg_dump -U seo_lab_observer --no-owner --no-acl seo_public_lab > artifacts/public-lab-ci-state.sql
+          python scripts/public_lab_safe_summary.py \
+            --input artifacts/test-lab-public-report.json \
+            --output artifacts/public-lab-safe-summary.json
       - uses: actions/upload-artifact@v4
         if: always()
         with:
           name: public-test-lab-evidence
           path: |
-            artifacts/test-lab-*.json
             artifacts/test-lab-*.png
-            artifacts/public-lab-ci-state.sql
+            artifacts/test-lab-browser.json
+            artifacts/public-lab-safe-summary.json
           retention-days: 14
-          if-no-files-found: error
+          if-no-files-found: warn

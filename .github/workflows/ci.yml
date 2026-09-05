@@ -85,6 +85,21 @@ jobs:
           python scripts/init_env.py
           docker compose config --quiet
           docker compose build api
+      - name: Prove runtime image excludes evaluator truth and operator tooling
+        run: |
+          docker run --rm --entrypoint python spiral-max-seo:local -c '
+          from pathlib import Path
+          root = Path("/app")
+          assert not (root / "benchmarks").exists()
+          assert not (root / "test_lab").exists()
+          assert {p.name for p in (root / "scripts").iterdir()} == {
+              "bootstrap.py", "deployment_preflight.py", "grant_runtime.py"
+          }
+          assert {p.name for p in (root / "docker").iterdir()} == {"entrypoint.py"}
+          forbidden = {"ground_truth.json", "pages.json", "benchmark_v2.py", "blind_evaluation_v3.py",
+                       "lab_operator_audit.py", "lab_rollback_drill.py", "public_lab_safe_summary.py", "test_lab.py"}
+          assert not any(path.name in forbidden for path in root.rglob("*"))
+          '
       - name: Start isolated fixture stack
         env:
           SCHEDULER_ENABLED: "true"
@@ -119,7 +134,6 @@ jobs:
           path: |
             artifacts/dashboard-*.png
             artifacts/test-lab-*.png
-            artifacts/test-lab-*.json
             artifacts/test-results.xml
           if-no-files-found: ignore
       - name: Stop isolated test stack

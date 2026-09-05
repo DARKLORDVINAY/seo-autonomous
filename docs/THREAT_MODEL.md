@@ -15,7 +15,13 @@ Assets are site integrity, credentials, production authority, canonical evidence
 | Cross-site access | Every referenced record is checked against site ID | Deployment-wide tokens are not per-user tenant authorisation |
 | UI injection/credential retention | Text-only DOM insertion, CSP, no persisted browser token, request/body limits | Real browser rendering is a separate verification gate |
 | Model/provider secret leakage | No secrets in model payloads; error type/ID only; request metadata logging | Operators must also secure proxy logs and tracing/export infrastructure |
+| Benchmark truth leakage/overfitting | Evaluator-signed observation-only challenge; truth retained independently; aggregate-only signed attestation; runtime/API/MCP redaction; truth/corpora excluded from container context and image | Evaluator independence and corpus novelty still require human due diligence; disclosed results retire a holdout |
+| Forged or edited benchmark result | Out-of-band pinned Ed25519 key, canonical byte commitments, strict aggregate schema, evaluator re-execution of the frozen predictor and arithmetic/safety validation | A compromised evaluator signing key can authenticate false statements; rotate/revoke it outside the application |
 
 Remote MCP validates an external issuer's signed JWT, exact audience, allowed subject, expiry and required scopes. It does not implement an OAuth issuer or bypass Work's connector requirements. The MCP process receives no administrator/reviewer token or database login.
 
-Security-sensitive paths have independently authored adversarial tests. See `SECURITY_REVIEW.md`, `API_SECURITY_REVIEW.md`, `tests/test_budget_security.py` and `tests/test_prediction_provenance.py`. None of these claim exhaustive formal verification or live penetration testing.
+Security-sensitive paths have independently authored adversarial tests. See
+`SECURITY_REVIEW.md`, `API_SECURITY_REVIEW.md`,
+`BLIND_EVALUATION_PROTOCOL.md`, `tests/test_budget_security.py` and
+`tests/test_prediction_provenance.py`. None of these claim exhaustive formal
+verification, evaluator independence or live penetration testing.

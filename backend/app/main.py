@@ -171,7 +171,7 @@ def strategy(site_id: UUID, session: DB, user: User):
 
 @app.get("/api/sites/{site_id}/evidence/{evidence_id}")
 def evidence_by_id(site_id: UUID, evidence_id: UUID, session: DB, user: User):
-    return control.serialise(control.scoped_record(session, m.Evidence, str(site_id), str(evidence_id)))
+    return control.public_evidence(control.scoped_record(session, m.Evidence, str(site_id), str(evidence_id)))
 
 
 @app.get("/api/sites/{site_id}/internal-links")
@@ -197,7 +197,8 @@ def list_view(site_id: UUID, view: str, session: DB, user: User,
         raise HTTPException(404, "Unknown canonical view")
     rows = session.scalars(select(model).where(model.site_id == str(site_id)).order_by(model.created_at.desc()).offset(offset).limit(limit))
     total = session.scalar(select(func.count()).select_from(model).where(model.site_id == str(site_id)))
-    return {"items": [control.serialise(r) for r in rows], "total": total, "offset": offset, "limit": limit, "has_more": offset + limit < total}
+    serializer = control.public_failure if model is m.FailureCase else control.serialise
+    return {"items": [serializer(r) for r in rows], "total": total, "offset": offset, "limit": limit, "has_more": offset + limit < total}
 
 
 @app.post("/api/sites/{site_id}/cycle")

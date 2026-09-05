@@ -117,6 +117,14 @@ provided before reasoning. An empty failure list is labelled as not supplied;
 it does not imply a clean record. Reversibility reduces action regret but does
 not establish that a change will help.
 
+Evaluator-private benchmark cases are a separate trust domain. Agent prompts,
+general API reads and MCP tools never receive benchmark paths, family labels,
+matched/missed units or raw false-positive/false-negative rows. They may receive
+only a bounded aggregate evidence summary and generalized preventative lesson.
+This prevents historical scoring labels from becoming detector hints. Detailed
+truth remains available only in evaluator custody; see
+`BLIND_EVALUATION_PROTOCOL.md`.
+
 ## Exact revision and blind-review separation
 
 For stored revisions, the trusted caller supplies:

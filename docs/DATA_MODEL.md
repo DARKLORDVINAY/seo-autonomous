@@ -19,6 +19,12 @@ The model inventory is broader than initial automated population: entity relatio
 
 Evidence carries source/type, content/hash, observation time, confidence, owner, status and fixture provenance. A claim separately carries its epistemic type, source, evidence IDs, confidence, owner, status, contradictions, alternative explanations and supersession link. A source ID is provenance, not proof or independence.
 
+An imported `benchmark_attestation` evidence row contains only a pinned-key-
+verified aggregate and fixed safety/limitation fields. Evaluator truth and
+case-level results are not canonical runtime inputs. Historical labelled Test
+Lab rows remain append-only audit data, but public API, MCP, agent-evidence and
+failure-history adapters redact their private case identity.
+
 GSC query rows and page-total rows have different aggregation meaning; an empty query denotes page totals. GA4 rows are organic landing-page/date observations; sessions are collected separately from qualified event outcomes. Unknown qualified conversion/value fields are nullable. Privacy, sampling, missing dates, unsettled reports and timezone flags travel with observations.
 
 ## Immutable change chain

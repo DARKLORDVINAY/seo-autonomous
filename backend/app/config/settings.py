@@ -50,6 +50,10 @@ class Settings(BaseSettings):
     dataforseo_password: SecretStr | None = None
     github_token: SecretStr | None = None
     github_repository: str | None = None
+    benchmark_evaluator_public_key_file: str | None = None
+    benchmark_evaluator_key_id: str | None = Field(default=None, pattern=r"^[A-Za-z0-9][A-Za-z0-9._:-]{0,127}$")
+    benchmark_expected_definition_sha256: str | None = Field(default=None, pattern=r"^[0-9a-f]{64}$")
+    benchmark_expected_source_fingerprint: str | None = Field(default=None, pattern=r"^[0-9a-f]{64}$")
     otel_service_name: str = "seo-control-plane"
     otel_exporter_otlp_endpoint: str | None = None
 

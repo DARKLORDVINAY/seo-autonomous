@@ -2,8 +2,9 @@
 from __future__ import annotations
 
 import json
+import base64
 from dataclasses import dataclass
-from datetime import timedelta
+from datetime import datetime, timedelta, timezone
 from uuid import uuid4
 
 import httpx
@@ -11,6 +12,7 @@ import pytest
 from bs4 import BeautifulSoup
 from fastapi.testclient import TestClient
 from pydantic import SecretStr
+from cryptography.hazmat.primitives.asymmetric.ed25519 import Ed25519PrivateKey
 from sqlalchemy import func, select
 
 from backend.app.config.settings import Settings, get_settings
@@ -19,7 +21,15 @@ from backend.app.db import models as m
 from backend.app.db.session import get_session, make_engine, make_session_factory
 from backend.app.integrations.fixtures import FixtureCMS
 from backend.app.main import app
+from backend.app.seo.benchmark_attestation import (
+    AggregateMetrics,
+    BenchmarkAttestation,
+    EngineeringThresholds,
+    SignedBenchmarkAttestation,
+    attestation_signing_bytes,
+)
 from backend.app.services import control
+from benchmarks.blind_exchange_v3 import public_key_pem
 
 
 TOKENS = {"operator": "test-operator-capability", "reviewer": "test-reviewer-capability", "admin": "test-admin-capability"}
@@ -271,6 +281,206 @@ def test_html_text_and_instruction_hypothesis_do_not_become_executable_authority
     assert state["site"]["autonomy_level"] == 1
     assert state["site"]["production_enabled"] is False
     assert api_case.cms.writes == 0
+
+
+@pytest.mark.asyncio
+async def test_private_benchmark_labels_are_redacted_from_api_agent_and_mcp_reads(api_case):
+    private_marker = "held-out-case-secret:/private-duplicate-title/"
+    with api_case.factory() as session:
+        evidence_id = control.record_evidence(session, api_case.site_id, "lab_benchmark", "lab_benchmark:private-run", {
+            "schema_version": 2,
+            "assessment": {
+                "true_positives": 7,
+                "false_positives": 1,
+                "false_negatives": 2,
+                "precision": 0.875,
+                "recall": 7 / 9,
+                "correct_no_action": 4,
+                "false_no_action": 0,
+                "coverage_complete": True,
+                "high_critical_intercepted": True,
+                "zero_autonomous_production_changes": True,
+                "structural_benchmark_passed": False,
+                "level_2_eligible": False,
+                "unexpected_detections": [{"path": private_marker, "kind": "duplicate_title"}],
+                "missed_issues": [{"path": private_marker, "kind": "canonical_error"}],
+                "matches": [{"path": private_marker}],
+            },
+        }, True)
+        session.add(m.FailureCase(
+            site_id=api_case.site_id,
+            category="lab_benchmark_false_negative",
+            predicted="Detect private unit",
+            actual=private_marker,
+            root_cause=private_marker,
+            incorrect_assumption=private_marker,
+            missing_evidence=private_marker,
+            agent_responsible="deterministic-observer",
+            detection_method=private_marker,
+            preventative_change=private_marker,
+            details_json={"error": {"path": private_marker, "kind": "canonical_error"}},
+        ))
+        session.commit()
+        agent_packet = control.agent_evidence(session, api_case.site_id, [evidence_id])
+        assert private_marker not in json.dumps(agent_packet)
+        assert agent_packet[0]["content"]["private_case_results_redacted"] is True
+        from backend.app.db.repositories.canonical import relevant_failures
+        assert relevant_failures(session, api_case.site_id) == []
+        assert relevant_failures(session, api_case.site_id, "lab_benchmark_false_negative") == []
+
+    evidence = api_case.request("GET", api_case.path(f"evidence/{evidence_id}"))
+    assert evidence.status_code == 200
+    assert private_marker not in evidence.text
+    assert evidence.json()["content"]["aggregate"]["false_negatives"] == 2
+    assert evidence.json()["content"]["level_2_eligible"] is False
+    failures = api_case.request("GET", api_case.path("failures"))
+    assert failures.status_code == 200
+    assert private_marker not in failures.text
+    assert failures.json()["items"][0]["category"] == "benchmark_private_scoring_failure"
+    assert failures.json()["items"][0]["details_json"]["private_case_results_redacted"] is True
+
+    from seo_mcp.server import ControlClient, create_server
+
+    def forward(request):
+        response = api_case.client.request(request.method, str(request.url), headers=dict(request.headers), content=request.content)
+        return httpx.Response(response.status_code, json=response.json())
+
+    client = ControlClient(base_url="http://127.0.0.1", token=TOKENS["operator"], transport=httpx.MockTransport(forward))
+    try:
+        server = create_server(client)
+        result = await server.call_tool("get_failure_history", {"site_id": api_case.site_id})
+        payload = result[1] if isinstance(result, tuple) else json.loads(result[0].text)
+        assert private_marker not in json.dumps(payload)
+        assert payload["items"][0]["category"] == "benchmark_private_scoring_failure"
+    finally:
+        client.client.close()
+
+
+def test_admin_can_import_only_a_pinned_signed_aggregate_without_granting_authority(api_case, tmp_path):
+    private_key = Ed25519PrivateKey.generate()
+    key_path = tmp_path / "evaluator-public.pem"
+    key_path.write_bytes(public_key_pem(private_key))
+    api_case.settings.benchmark_evaluator_public_key_file = str(key_path)
+    api_case.settings.benchmark_evaluator_key_id = "independent-test-key"
+    api_case.settings.benchmark_expected_definition_sha256 = "f" * 64
+    api_case.settings.benchmark_expected_source_fingerprint = "d" * 64
+    metrics = AggregateMetrics(
+        true_positives=1,
+        false_positives=0,
+        false_negatives=0,
+        precision=1.0,
+        recall=1.0,
+        f1=1.0,
+        macro_family_recall=1.0,
+        no_action_controls=1,
+        correct_no_action=1,
+        no_action_accuracy=1.0,
+        false_no_action=0,
+        ambiguous_cases=0,
+        appropriate_uncertain_outcomes=0,
+        disposition_overclaims=0,
+        coverage_overclaims=0,
+        protocol_errors=0,
+    )
+    attestation = BenchmarkAttestation(
+        schema_version="3.0",
+        protocol="blind_holdout_exchange_v3",
+        evaluation_id="independent-api-test-01",
+        evaluator_id="independent-api-evaluator",
+        issued_at=datetime.now(timezone.utc) - timedelta(minutes=1),
+        challenge_sha256="a" * 64,
+        observations_sha256="b" * 64,
+        predictions_sha256="c" * 64,
+        source_fingerprint="d" * 64,
+        truth_commitment_sha256="e" * 64,
+        benchmark_definition_sha256="f" * 64,
+        runtime_profile="CPython 3.12 + requirements.lock.txt",
+        case_count=2,
+        family_count=1,
+        issue_unit_count=1,
+        metrics=metrics,
+        thresholds=EngineeringThresholds(
+            precision_min=0.95,
+            recall_min=0.9,
+            macro_family_recall_min=0.8,
+            no_action_accuracy_min=0.95,
+            false_no_action_max=0,
+            disposition_overclaims_max=0,
+            coverage_overclaims_max=0,
+            protocol_errors_max=0,
+        ),
+        engineering_benchmark_gate_passed=True,
+        independent_blind_replication=True,
+        holdout_first_exposure=True,
+        evaluator_truth_withheld=True,
+        evaluator_reexecuted_predictor=True,
+        runtime_truth_access=False,
+        private_case_results_included=False,
+        autonomy_level=1,
+        production_enabled=False,
+        production_write_budget=0,
+        production_writes=0,
+        paid_api_calls=0,
+        live_model_executed=False,
+        level_2_eligible=False,
+        limitations=["structural_not_business_outcomes", "benchmark_does_not_grant_autonomy"],
+    )
+
+    def signed(value):
+        return SignedBenchmarkAttestation(
+            algorithm="Ed25519",
+            key_id="independent-test-key",
+            attestation=value,
+            signature_base64=base64.b64encode(
+                private_key.sign(attestation_signing_bytes(value, "independent-test-key"))
+            ).decode(),
+        ).model_dump(mode="json")
+
+    endpoint = api_case.path("benchmark-attestations")
+    api_case.settings.benchmark_evaluator_public_key_file = None
+    assert api_case.request("POST", endpoint, role="admin", json=signed(attestation)).status_code == 409
+    api_case.settings.benchmark_evaluator_public_key_file = str(key_path)
+    for role in ("operator", "reviewer"):
+        assert api_case.request("POST", endpoint, role=role, json=signed(attestation)).status_code == 403
+    response = api_case.request("POST", endpoint, role="admin", json=signed(attestation))
+    assert response.status_code == 201, response.text
+    report = response.json()
+    assert report["status"] == "recorded"
+    assert report["signature_verified"] and report["aggregate_only"]
+    assert report["level_2_eligible"] is report["production_write"] is False
+    action_count = api_case.count(m.Action)
+    replay = api_case.request("POST", endpoint, role="admin", json=signed(attestation))
+    assert replay.status_code == 201 and replay.json()["status"] == "existing"
+    assert api_case.count(m.Action) == action_count
+    conflicting = attestation.model_copy(deep=True)
+    conflicting.evaluator_id = "different-independent-evaluator"
+    assert api_case.request("POST", endpoint, role="admin", json=signed(conflicting)).status_code == 409
+    evidence = api_case.request("GET", api_case.path(f"evidence/{report['evidence_id']}"))
+    assert evidence.status_code == 200
+    assert evidence.json()["content"]["metrics"]["true_positives"] == 1
+    assert evidence.json()["content"]["signature_receipt"]["key_id"] == "independent-test-key"
+    assert len(evidence.json()["content"]["signature_receipt"]["signature_base64"]) == 88
+    assert "/private-answer/" not in evidence.text
+    state = api_case.request("GET", api_case.path("state")).json()
+    assert state["site"]["autonomy_level"] == 1 and state["site"]["production_enabled"] is False
+
+    tampered = signed(attestation)
+    tampered["attestation"]["evaluation_id"] = "tampered-but-unsigned"
+    assert api_case.request("POST", endpoint, role="admin", json=tampered).status_code == 422
+    unsafe = signed(attestation)
+    unsafe["attestation"]["level_2_eligible"] = True
+    assert api_case.request("POST", endpoint, role="admin", json=unsafe).status_code == 422
+    labelled = signed(attestation)
+    labelled["attestation"]["case_results"] = [{"path": "/private-answer/"}]
+    assert api_case.request("POST", endpoint, role="admin", json=labelled).status_code == 422
+    future = attestation.model_copy(deep=True)
+    future.evaluation_id = "independent-api-future-01"
+    future.issued_at = datetime.now(timezone.utc) + timedelta(days=1)
+    assert api_case.request("POST", endpoint, role="admin", json=signed(future)).status_code == 422
+    different_release = attestation.model_copy(deep=True)
+    different_release.evaluation_id = "independent-api-other-release"
+    different_release.source_fingerprint = "9" * 64
+    assert api_case.request("POST", endpoint, role="admin", json=signed(different_release)).status_code == 422
 
 
 def test_internal_link_destination_must_be_inventoried_in_the_same_site(api_case):

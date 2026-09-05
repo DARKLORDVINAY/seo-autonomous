@@ -1,6 +1,9 @@
 """Administrator-owned business facts with narrow schemas and append-only audit."""
 from __future__ import annotations
 
+from datetime import timedelta
+import hashlib
+from pathlib import Path
 from typing import Annotated, Literal
 from urllib.parse import urlsplit
 from uuid import UUID
@@ -16,6 +19,11 @@ from backend.app.contracts import StrictModel, stable_hash, utcnow
 from backend.app.db import models as m
 from backend.app.db.session import get_session
 from backend.app.integrations.google_analytics import GA4Client
+from backend.app.seo.benchmark_attestation import (
+    SignedBenchmarkAttestation,
+    public_attestation_summary,
+    verify_signed_attestation,
+)
 from backend.app.services import control
 
 
@@ -117,6 +125,19 @@ class ConfigurationChangeReport(StrictModel):
     changed: bool
 
 
+class BenchmarkAttestationReport(StrictModel):
+    status: Literal["recorded", "existing"]
+    site_id: UUID
+    evidence_id: UUID
+    action_id: UUID | None
+    evaluation_id: ShortText
+    signature_verified: Literal[True]
+    aggregate_only: Literal[True]
+    engineering_benchmark_gate_passed: bool
+    level_2_eligible: Literal[False]
+    production_write: Literal[False]
+
+
 def _registered_site(session: Session, site_id: UUID) -> m.Site:
     # Serialize configuration updates with model reservations and other site
     # writers; refreshing the locked row avoids merging stale config_json.
@@ -182,3 +203,110 @@ def post_brand_facts(site_id: UUID, body: BrandFacts, session: DB, user: Admin):
     facts = body.model_dump(include={"brand_name", "services", "service_areas"})
     return _record_change(session, site, user, "brand_facts", facts, source=body.source,
                           reason=body.reason, previous_hash=None)
+
+
+@router.post("/benchmark-attestations", status_code=201, response_model=BenchmarkAttestationReport)
+def import_benchmark_attestation(
+    site_id: UUID, body: SignedBenchmarkAttestation, session: DB, user: Admin, settings: Config,
+):
+    """Persist a pinned-key-verified aggregate; never accept evaluator case data."""
+    site = _registered_site(session, site_id)
+    required = (
+        settings.benchmark_evaluator_public_key_file,
+        settings.benchmark_evaluator_key_id,
+        settings.benchmark_expected_definition_sha256,
+        settings.benchmark_expected_source_fingerprint,
+    )
+    if not all(required):
+        raise HTTPException(409, "The pinned benchmark evaluator and expected release are not fully configured")
+    key_path = Path(settings.benchmark_evaluator_public_key_file)
+    try:
+        if not key_path.is_file() or key_path.stat().st_size > 16_384:
+            raise ValueError("invalid key file")
+        public_key = key_path.read_bytes()
+    except OSError as error:
+        raise HTTPException(409, "The configured benchmark evaluator public key is unavailable") from error
+    try:
+        attestation = verify_signed_attestation(
+            body, public_key, expected_key_id=settings.benchmark_evaluator_key_id,
+        )
+    except ValueError as error:
+        raise HTTPException(422, "Benchmark attestation failed pinned-key or schema verification") from error
+    if attestation.issued_at > utcnow() + timedelta(minutes=5):
+        raise HTTPException(422, "Benchmark attestation timestamp is in the future")
+    if (attestation.benchmark_definition_sha256 != settings.benchmark_expected_definition_sha256
+            or attestation.source_fingerprint != settings.benchmark_expected_source_fingerprint):
+        raise HTTPException(422, "Benchmark attestation does not match the preregistered definition and source release")
+    content = {
+        **public_attestation_summary(attestation),
+        "signature_verified": True,
+        "signature_receipt": {
+            "algorithm": body.algorithm,
+            "key_id": body.key_id,
+            "signature_base64": body.signature_base64,
+            "trusted_public_key_sha256": hashlib.sha256(public_key).hexdigest(),
+        },
+    }
+    content_hash = stable_hash(content)
+    source = f"benchmark_attestation:{attestation.evaluation_id}"
+    existing = session.scalar(select(m.Evidence).where(
+        m.Evidence.site_id == site.id,
+        m.Evidence.source_type == "benchmark_attestation",
+        m.Evidence.source == source,
+    ).limit(1))
+    if existing:
+        if existing.content_hash != content_hash:
+            raise HTTPException(409, "This evaluation identifier is already bound to another aggregate")
+        return BenchmarkAttestationReport(
+            status="existing",
+            site_id=site.id,
+            evidence_id=existing.id,
+            action_id=None,
+            evaluation_id=attestation.evaluation_id,
+            signature_verified=True,
+            aggregate_only=True,
+            engineering_benchmark_gate_passed=attestation.engineering_benchmark_gate_passed,
+            level_2_eligible=False,
+            production_write=False,
+        )
+    evidence = m.Evidence(
+        site_id=site.id,
+        source_type="benchmark_attestation",
+        source=source,
+        content=content,
+        content_hash=content_hash,
+        owner=user.actor,
+        observed_at=attestation.issued_at,
+        confidence=1,
+        is_fixture=True,
+    )
+    session.add(evidence)
+    session.flush()
+    action = control.local_audit(
+        session,
+        site.id,
+        "import_benchmark_attestation",
+        user.actor,
+        "Record a pinned-key-verified aggregate benchmark attestation",
+        {
+            "evidence_id": evidence.id,
+            "evidence_hash": content_hash,
+            "evaluation_id": attestation.evaluation_id,
+            "engineering_benchmark_gate_passed": attestation.engineering_benchmark_gate_passed,
+            "aggregate_only": True,
+            "level_2_eligible": False,
+        },
+    )
+    session.commit()
+    return BenchmarkAttestationReport(
+        status="recorded",
+        site_id=site.id,
+        evidence_id=evidence.id,
+        action_id=action.id,
+        evaluation_id=attestation.evaluation_id,
+        signature_verified=True,
+        aggregate_only=True,
+        engineering_benchmark_gate_passed=attestation.engineering_benchmark_gate_passed,
+        level_2_eligible=False,
+        production_write=False,
+    )

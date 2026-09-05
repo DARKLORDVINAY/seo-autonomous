@@ -42,7 +42,12 @@ def action_history(session: Session, site_id: str, action_id: str) -> list[Actio
 def relevant_failures(session: Session, site_id: str, category: str | None = None, limit: int = 25) -> list[FailureCase]:
     if not 1 <= limit <= 100:
         raise ValueError("Limit must be between 1 and 100")
-    stmt = select(FailureCase).where(FailureCase.site_id == site_id)
+    # Case-labelled benchmark failures are evaluator-private. Runtime callers
+    # receive generalized failures through the control service, never the key.
+    stmt = select(FailureCase).where(
+        FailureCase.site_id == site_id,
+        ~FailureCase.category.startswith("lab_benchmark_"),
+    )
     if category:
         stmt = stmt.where(FailureCase.category == category)
     return list(session.scalars(stmt.order_by(FailureCase.created_at.desc()).limit(limit)))

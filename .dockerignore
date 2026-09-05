@@ -20,3 +20,9 @@ node_modules
 tests
 mcp/tests
 docs
+benchmarks
+test_lab
+scripts/*
+!scripts/bootstrap.py
+!scripts/grant_runtime.py
+!scripts/deployment_preflight.py

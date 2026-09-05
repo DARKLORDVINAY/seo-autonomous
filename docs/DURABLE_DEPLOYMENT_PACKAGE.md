@@ -21,6 +21,21 @@ The profile is a deployment convenience, not an authorization boundary:
 explicitly naming a service can start it. The owner must approve recurrence
 separately. See [Docker's profile semantics](https://docs.docker.com/compose/how-tos/profiles/).
 
+The service image is also an evidence boundary. It contains the backend, MCP,
+dashboard, container entry point and only `bootstrap.py`, `grant_runtime.py` and
+`deployment_preflight.py`. The Docker build context and resulting image exclude
+benchmark corpora, evaluator truth, Test Lab source manifests, detailed reports,
+rollback/operator tools and the blind-exchange CLI. CI inspects the actual image,
+not only the Dockerfile. Do not broaden these copies in a provider-specific
+deployment. See `BLIND_EVALUATION_PROTOCOL.md`.
+
+An optional benchmark attestation import needs a separately agreed evaluator
+key ID, the matching **public** Ed25519 key mounted read-only, and the expected
+benchmark-definition/source-release SHA-256 values pinned in environment
+configuration. Do not place an evaluator private key, truth corpus or detailed
+report on the host. With incomplete pins, the administrator-only import route
+fails closed; the scheduler, agents and MCP cannot invoke it.
+
 `SEO_RELEASE_IMAGE` must identify an already-reviewed image by immutable
 `repository@sha256:...` or local `sha256:...` image ID. Pulling is disabled in the
 overlay. Build/retrieve that image through a reviewed supply-chain process;
