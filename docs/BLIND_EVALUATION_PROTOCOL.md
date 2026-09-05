@@ -82,7 +82,11 @@ the evaluator identity and process still require human due diligence.
      --public-key /operator/pinned/evaluator-public.pem \
      --key-id independently-agreed-key-id \
      --expected-definition-sha256 independently-recorded-definition-hash \
-     --expected-source-fingerprint owner-frozen-source-hash
+     --expected-source-fingerprint owner-frozen-source-hash \
+     --expected-evaluation-id independently-recorded-evaluation-uuid \
+     --expected-challenge-sha256 independently-recorded-challenge-hash \
+     --expected-execution-environment-sha256 independently-recorded-runtime-hash \
+     --max-age-hours 168
    ```
 
 6. If later import is explicitly authorized, mount the evaluator public key

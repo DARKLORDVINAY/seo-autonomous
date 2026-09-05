@@ -493,6 +493,9 @@ def test_owner_cli_exposes_only_fingerprints_response_receipt_and_verified_aggre
         "--key-id", KEY_ID,
         "--expected-definition-sha256", benchmark_definition_digest(BENCHMARK_DEFINITION, toy_scorer),
         "--expected-source-fingerprint", protocol_source_fingerprint(),
+        "--expected-evaluation-id", envelope.attestation.evaluation_id,
+        "--expected-challenge-sha256", envelope.attestation.challenge_sha256,
+        "--expected-execution-environment-sha256", envelope.attestation.execution_environment_sha256,
     ], cwd=ROOT, capture_output=True, text=True, check=False, timeout=30)
     assert verify.returncode == 0, verify.stderr
     summary = json.loads(verify.stdout)
@@ -507,9 +510,21 @@ def test_owner_cli_exposes_only_fingerprints_response_receipt_and_verified_aggre
         "--key-id", KEY_ID,
         "--expected-definition-sha256", "0" * 64,
         "--expected-source-fingerprint", protocol_source_fingerprint(),
+        "--expected-evaluation-id", envelope.attestation.evaluation_id,
+        "--expected-challenge-sha256", envelope.attestation.challenge_sha256,
+        "--expected-execution-environment-sha256", envelope.attestation.execution_environment_sha256,
     ], cwd=ROOT, capture_output=True, text=True, check=False, timeout=30)
     assert wrong_pin.returncode == 1
     assert json.loads(wrong_pin.stdout)["status"] == "blocked"
+
+
+def test_owner_cli_bounds_evaluator_public_key_input(tmp_path):
+    from scripts.blind_evaluation_v3 import _public_key
+
+    oversized = tmp_path / "oversized-public-key.pem"
+    oversized.write_bytes(b"x" * 16_385)
+    with pytest.raises(ValueError, match="input budget"):
+        _public_key(oversized)
 
 
 @pytest.mark.parametrize("field", ["expected_issues", "ground_truth", "answer_key", "autonomy_level", "policy"])
