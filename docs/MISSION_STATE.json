@@ -2,12 +2,27 @@
   "schema_version": 1,
   "current_verification_checkpoint": {
     "date": "2026-09-04",
-    "scope": "detector_development_only_no_account_hosting_public_site_or_autonomy_actions",
+    "scope": "local_security_and_durable_runtime_hardening_only_no_account_hosting_public_site_or_autonomy_actions",
     "autonomy_level": 1,
     "production_enabled": false,
     "production_write_budget": 0,
     "paid_api_calls": 0,
-    "local_tests": {"passed": 875, "failed": 0, "skipped_postgres": 8},
+    "local_tests": {
+      "passed": 928,
+      "failed": 0,
+      "skipped_external_infrastructure": 8,
+      "known_warnings": 1,
+      "duration_seconds": 33.01
+    },
+    "targeted_verification": {
+      "untrusted_input_and_security": {"passed": 268, "failed": 0},
+      "scheduler_and_control_plane_chaos": {"passed": 75, "failed": 0, "skipped_postgres": 6},
+      "gsc_ga4_and_evidence_semantics": {"passed": 206, "failed": 0},
+      "ruff": "passed",
+      "compileall": "passed",
+      "pip_check": "passed",
+      "diff_check": "passed"
+    },
     "holdout_cases": 132,
     "holdout_families": 44,
     "holdout_issue_units": 108,
@@ -18,8 +33,8 @@
     "holdout_no_action_controls": 54,
     "engineering_benchmark_gate_passed": false,
     "level_2_eligible": false,
-    "report": "docs/DETECTOR_DEVELOPMENT_V3.md",
-    "postgres_compose_restore_gate": "passed_in_disposable_source_CI_not_durable_host",
+    "report": "docs/BLIND_ISOLATION_HARDENING_CHECKPOINT.md",
+    "postgres_compose_restore_gate": "historically_passed_for_earlier_commit_in_disposable_CI_not_executed_for_current_local_commit",
     "source_ci": {
       "run_id": 33821865522,
       "tested_code_commit": "93850f80b5c5cbe5b958ff93ed7786af2a4a4272",
@@ -32,6 +47,18 @@
       "fixed_zero_compose_package": true,
       "local_fixture_rendered_pages": 26,
       "live_public_release_changed": false
+    },
+    "local_hardening": {
+      "code_commit": "157096a38bc06c2c25caabe70925829f33533ef9",
+      "code_tree": "fc04da6cff03341b40fd48d43114184f7d192d42",
+      "branch": "hardening/blind-evaluation-isolation-v3-20260904",
+      "remote_status": "local_only_connector_disclosure_gate_blocked_upload",
+      "remote_ci": false,
+      "new_holdout_authored": false,
+      "new_holdout_scored": false,
+      "kernel_isolation_verified": false,
+      "installed_artifact_hashes_verified": false,
+      "reference_runner_can_claim_independent_pass": false
     },
     "first_ci_failure_preserved": "864 passed; five PostgreSQL setup errors revealed raw-driver percent escaping in trigger helper; corrected and retested",
     "holdout_status": "failed_first_run_frozen_disclosed_and_retired; not used for v3 tuning; one inherited first-PR CI replay excluded and routine replay removed",
@@ -53,7 +80,7 @@
       "level_2_eligible": false,
       "evidence_class": "development_training_feedback_not_blind_validation"
     },
-    "next_human_required_action": "Explicitly approve or decline merge of source PR 6. After code freeze, a genuinely independent author must create a new blind holdout; durable hosting and Google API connection remain later account actions."
+    "next_human_required_action": "Explicitly approve or decline disclosure of the local hardening diff to DARKLORDVINAY/seo-autonomous on a non-default branch. Then run disposable PostgreSQL/container CI, review code freeze, and commission a fresh holdout in an independent immutable kernel-isolated evaluator. Merge, durable hosting, Google APIs and autonomy remain separate gates."
   },
   "objective": "Maximise incremental qualified organic conversion value",
   "success_criteria": [
@@ -106,6 +133,8 @@
   },
   "unknowns": [
     "fresh independently authored detector-v3 holdout performance",
+    "remote CI result for local hardening commit 157096a38bc06c2c25caabe70925829f33533ef9",
+    "independent immutable kernel-isolated evaluator and verified dependency artifacts",
     "durable PostgreSQL/container host",
     "Search Console API read identity and property access",
     "GA4 saved default-value discrepancy and actual event receipt; owner account work frozen",
@@ -113,6 +142,8 @@
   ],
   "blockers": [
     "The retired v2 holdout failed and the perfect v3 development score is training evidence only; no fresh independent competence result exists",
+    "The local reference runner is deliberately non-independent and cannot pass the engineering gate; a real evaluator must provide kernel isolation and immutable verified runtime artifacts",
+    "The GitHub connector rejected source upload because it could not verify the disclosure destination; no hardening branch, PR or remote CI was created",
     "No durable PostgreSQL/container host is connected; CI services are disposable",
     "GSC browser ownership and the dedicated GA4 stream are verified; backend Google API credentials remain unconnected",
     "The opt-in analytics release is deployed and key-event registration was observed; a default-value discrepancy and actual event receipt remain unresolved; account actions are frozen",
@@ -121,8 +152,10 @@
   ],
   "critical_path": [
     "Preserve frozen failed holdout v2 and all completed public release evidence",
-    "Review source PR 6 after its corrected complete disposable CI gate passed; do not merge without explicit approval",
-    "After code freeze, obtain a genuinely independent newly authored blind holdout; do not reuse or relabel v2",
+    "Obtain explicit source-disclosure approval before publishing local hardening commit 157096a38bc06c2c25caabe70925829f33533ef9 to a non-default repository branch",
+    "Run complete disposable PostgreSQL/container CI against that exact hardening tree; local SQLite tests cannot substitute for the eight infrastructure gates",
+    "Review source PR 6 together with the newer local hardening diff; do not merge either without explicit approval",
+    "After code freeze, obtain a genuinely independent newly authored blind holdout in an immutable kernel-isolated runner; do not reuse or relabel v2",
     "Use the latest canonical SQLite/evidence recovery checkpoint; retain first failures and the failed frozen holdout",
     "Stop further disclosed-corpus tuning; Level 1 and zero write/spend budgets remain fixed",
     "Future human gate only after independent competence evidence: authorize an existing durable backend target; no account action now"
@@ -170,7 +203,7 @@
       "decision": "Use the disclosed v2 development split only as training feedback for detector v3, preserve the failed v2 holdout as the latest independent result, and require a newly authored blind holdout before any competence or autonomy claim."
     }
   ],
-  "status": "detector_development_v3_pr_ci_passed_merge_and_fresh_blind_pending",
+  "status": "local_blind_isolation_and_durable_runtime_hardening_verified_remote_ci_and_external_evaluator_pending",
   "verified_checkpoint": {
     "checked_at": "2026-09-01T23:42:06.157616+00:00",
     "tests": 633,
