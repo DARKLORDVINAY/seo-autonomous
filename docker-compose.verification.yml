@@ -2,6 +2,7 @@
 # Select an existing immutable local image ID or repo@sha256 digest explicitly.
 x-verification-environment: &verification-environment
   VERIFICATION_ONLY: "true"
+  ENVIRONMENT: production
   SEO_RELEASE_IMAGE: ${SEO_RELEASE_IMAGE:?Set the reviewed immutable image digest}
   AUTONOMY_LEVEL: "1"
   PRODUCTION_ENABLED: "false"
@@ -26,6 +27,19 @@ services:
   migrate:
     image: ${SEO_RELEASE_IMAGE:?Set the reviewed immutable image digest}
     pull_policy: never
+    environment:
+      # The guarded entrypoint validates this exact selector before constructing
+      # an owner DATABASE_URL, creating an engine, or invoking migrations.
+      VERIFICATION_ONLY: "true"
+      ENVIRONMENT: production
+      SEO_RELEASE_IMAGE: ${SEO_RELEASE_IMAGE:?Set the reviewed immutable image digest}
+      # These are independent release-record pins, never values inferred from
+      # DATABASE_URL. Use mode=bootstrap with heads=uninitialized only for a
+      # newly created database whose public schema is empty.
+      SEO_MIGRATION_EXPECTED_DATABASE: ${SEO_MIGRATION_EXPECTED_DATABASE:?Set the reviewed database name}
+      SEO_MIGRATION_EXPECTED_SYSTEM_IDENTIFIER: ${SEO_MIGRATION_EXPECTED_SYSTEM_IDENTIFIER:?Set the reviewed PostgreSQL system identifier}
+      SEO_MIGRATION_MODE: ${SEO_MIGRATION_MODE:?Set bootstrap or upgrade}
+      SEO_MIGRATION_EXPECTED_SCHEMA_HEADS: ${SEO_MIGRATION_EXPECTED_SCHEMA_HEADS:?Set uninitialized or the predecessor heads}
   api:
     image: ${SEO_RELEASE_IMAGE:?Set the reviewed immutable image digest}
     pull_policy: never

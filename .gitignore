@@ -15,4 +15,6 @@ artifacts/
 node_modules/
 backups/
 *.dump
+*.backup/
+.*.partial/
 test_lab/dist/

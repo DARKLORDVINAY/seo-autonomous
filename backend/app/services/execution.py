@@ -175,6 +175,21 @@ def _events(session: Session, action_id: str) -> list[ActionEvent]:
     return list(session.scalars(select(ActionEvent).where(ActionEvent.action_id == action_id).order_by(ActionEvent.created_at, ActionEvent.id)))
 
 
+def _successful_action_for_revision(
+    session: Session, revision_id: str, *, exclude_action_id: str | None = None,
+) -> Action | None:
+    statement = (
+        select(Action)
+        .join(ActionEvent, ActionEvent.action_id == Action.id)
+        .where(Action.revision_id == revision_id, ActionEvent.event_type == "succeeded")
+        .order_by(Action.created_at, Action.id)
+        .limit(1)
+    )
+    if exclude_action_id is not None:
+        statement = statement.where(Action.id != exclude_action_id)
+    return session.scalar(statement)
+
+
 def _result(session: Session, action: Action, *, replay: bool = False) -> dict[str, Any]:
     events = _events(session, action.id)
     terminal = [event for event in events if event.event_type in _FINAL_EVENTS]
@@ -492,6 +507,14 @@ def execute_revision(
             return _audit(session, site_id=revision.site_id, revision=revision, kind=revision.kind, actor=actor,
                           status="blocked", details={"reasons": ["idempotency_key_bound_to_different_request"], "existing_action_id": duplicate.id})
         return _result(session, duplicate, replay=True)
+    prior_success = _successful_action_for_revision(session, revision.id, exclude_action_id=action.id)
+    if prior_success is not None:
+        _event(session, action, "blocked", {
+            "reasons": ["revision_already_succeeded"],
+            "existing_action_id": prior_success.id,
+        })
+        session.commit()
+        return _result(session, action)
     site = session.get(Site, revision.site_id, populate_existing=True)
     page = session.get(Page, revision.page_id)
     if site is None or page is None or page.site_id != revision.site_id:
@@ -531,6 +554,8 @@ def execute_revision(
         session.expire(revision)
         reasons = _policy_reasons(session, revision, site, is_fixture=cms.is_fixture, production_enabled=production_enabled,
                                   max_autonomy_level=max_autonomy_level)
+        if _successful_action_for_revision(session, revision.id, exclude_action_id=action.id) is not None:
+            reasons.append("revision_already_succeeded")
         recent_actions = session.scalar(select(func.count(Action.id)).where(
             Action.site_id == site.id, Action.kind.in_([kind.value for kind in ActionKind if kind not in LOCAL_KINDS]),
             Action.created_at >= utcnow() - timedelta(days=1),

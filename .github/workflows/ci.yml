@@ -50,6 +50,27 @@ jobs:
           cache-dependency-path: requirements.lock.txt
       - name: Install locked dependencies
         run: python -m pip install --requirement requirements.lock.txt
+      - name: Isolate disposable PostgreSQL cluster database capabilities
+        run: |
+          python - <<'PY'
+          import os
+          import psycopg
+          from psycopg import sql
+          from sqlalchemy.engine import make_url
+
+          url = make_url(os.environ["TEST_POSTGRES_URL"])
+          with psycopg.connect(
+              host=url.host, port=url.port, dbname=url.database,
+              user=url.username, password=url.password, autocommit=True,
+          ) as connection:
+              databases = connection.execute(
+                  "SELECT datname FROM pg_database WHERE datallowconn ORDER BY datname"
+              ).fetchall()
+              for (database,) in databases:
+                  connection.execute(sql.SQL(
+                      "REVOKE CONNECT, TEMPORARY ON DATABASE {} FROM PUBLIC"
+                  ).format(sql.Identifier(database)))
+          PY
       - name: Lint
         run: ruff check .
       - name: Migrate actual PostgreSQL and check drift
@@ -118,8 +139,19 @@ jobs:
       - name: Check hard-zero durable package without starting its profiled worker
         run: |
           export SEO_RELEASE_IMAGE="$(docker image inspect spiral-max-seo:local --format '{{.Id}}')"
+          # Disposable CI observes these values mechanically. Production pins
+          # must instead come from the independently reviewed release record.
+          export SEO_MIGRATION_EXPECTED_DATABASE=seo
+          export SEO_MIGRATION_EXPECTED_SYSTEM_IDENTIFIER="$(
+            docker compose exec -T db sh -ec \
+              'psql --no-psqlrc --username "$POSTGRES_USER" --dbname "$POSTGRES_DB" --tuples-only --no-align --command "SELECT system_identifier FROM pg_catalog.pg_control_system()"' \
+              | tr -d '[:space:]'
+          )"
+          export SEO_MIGRATION_MODE=upgrade
+          export SEO_MIGRATION_EXPECTED_SCHEMA_HEADS=0002_runtime_role_split
           docker compose -f docker-compose.yml -f docker-compose.verification.yml config --quiet
           docker compose stop worker api
+          docker compose -f docker-compose.yml -f docker-compose.verification.yml run --rm migrate
           docker compose -f docker-compose.yml -f docker-compose.verification.yml run --rm api preflight
           docker compose -f docker-compose.yml -f docker-compose.verification.yml up -d --wait api
           test -z "$(docker compose ps --status running --services worker)"

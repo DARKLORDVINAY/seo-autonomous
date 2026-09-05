@@ -3,10 +3,11 @@ from __future__ import annotations
 
 from functools import lru_cache
 from typing import Literal
-from urllib.parse import parse_qs, urlsplit
 
 from pydantic import Field, SecretStr, model_validator
 from pydantic_settings import BaseSettings, SettingsConfigDict
+
+from backend.app.db.transport import validate_database_transport
 
 
 class Settings(BaseSettings):
@@ -60,6 +61,9 @@ class Settings(BaseSettings):
         default=None, pattern=r"^[0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$",
     )
     benchmark_expected_challenge_sha256: str | None = Field(default=None, pattern=r"^[0-9a-f]{64}$")
+    benchmark_expected_observations_sha256: str | None = Field(default=None, pattern=r"^[0-9a-f]{64}$")
+    benchmark_expected_predictions_sha256: str | None = Field(default=None, pattern=r"^[0-9a-f]{64}$")
+    benchmark_expected_truth_commitment_sha256: str | None = Field(default=None, pattern=r"^[0-9a-f]{64}$")
     benchmark_expected_execution_environment_sha256: str | None = Field(
         default=None, pattern=r"^[0-9a-f]{64}$",
     )
@@ -89,15 +93,7 @@ class Settings(BaseSettings):
         if self.agent_mode == "openai" and (not self.openai_api_key or not self.openai_model):
             raise ValueError("Live agents require OPENAI_API_KEY and an explicitly selected OPENAI_MODEL")
         if self.environment == "production":
-            if not self.database_url.startswith(("postgresql://", "postgresql+psycopg://")):
-                raise ValueError("Production requires PostgreSQL")
-            parsed_database = urlsplit(self.database_url)
-            if not parsed_database.hostname:
-                raise ValueError("Production PostgreSQL requires an explicit database host")
-            local_database_hosts = {"db", "localhost", "127.0.0.1", "::1"}
-            ssl_modes = parse_qs(parsed_database.query).get("sslmode", [])
-            if parsed_database.hostname not in local_database_hosts and ssl_modes != ["verify-full"]:
-                raise ValueError("Remote production PostgreSQL requires sslmode=verify-full")
+            validate_database_transport(self.database_url, environment=self.environment)
             if self.service_role == "api" and (not self.api_token or len(self.api_token.get_secret_value()) < 32):
                 raise ValueError("Production requires an API token of at least 32 characters")
             for name, token in (("API", self.api_token), ("approval", self.approval_token), ("administrator", self.admin_token)):

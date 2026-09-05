@@ -551,8 +551,8 @@ def test_replayed_and_new_paid_reservations_remain_blocked_at_zero_budget(chaos_
 @pytest.mark.parametrize("status", ["retry_exhausted", "reconciliation_required"])
 def test_worker_exit_status_does_not_report_reconciliation_as_success(chaos_db, monkeypatch, status):
     settings, _, site_id, _ = chaos_db
-    monkeypatch.setattr(worker, "get_settings", lambda: settings)
-    monkeypatch.setattr(worker, "verify_schema_revision", lambda _: ())
+    monkeypatch.setattr(worker, "load_worker_settings", lambda: settings)
+    monkeypatch.setattr(worker, "verify_database_readiness", lambda *_args, **_kwargs: ())
     monkeypatch.setattr(worker, "run_scheduled_job", lambda *args, **kwargs: [{"site_id": site_id, "status": status}])
     assert worker.main(["--once", jobs.WEEKLY_REVIEW, "--site-id", site_id]) == 1
 

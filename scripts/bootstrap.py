@@ -2,6 +2,7 @@
 from __future__ import annotations
 
 import argparse
+from collections.abc import Callable
 import json
 import os
 from pathlib import Path
@@ -11,6 +12,7 @@ from urllib.parse import urlsplit
 from alembic import command
 from alembic.config import Config
 from sqlalchemy import select
+from sqlalchemy.engine import Connection
 
 # Both direct script and module invocation import the same application package.
 sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
@@ -18,20 +20,35 @@ from backend.app.config.settings import Settings
 from backend.app.db import models as m
 from backend.app.db.session import make_engine, make_session_factory
 from backend.app.services import control
+from scripts.deployment_preflight import (
+    MigrationTarget,
+    required_migration_target,
+)
 
 ROOT = Path(__file__).resolve().parents[1]
 
 
-def migrate(database_url: str) -> None:
+def migrate(
+    database_url: str, *, environment: str | None = None,
+    expected_target: MigrationTarget | None = None,
+    post_migration: Callable[[Connection], None] | None = None,
+) -> None:
     """Inject the actual connection so an ambient DATABASE_URL cannot retarget it."""
-    engine = make_engine(database_url)
+    expected_target = required_migration_target(
+        environment=environment,
+        explicit=expected_target,
+    )
+    engine = make_engine(database_url, environment=environment)
     try:
         config = Config(str(ROOT / "alembic.ini"))
         config.set_main_option("script_location", str(ROOT / "backend/app/db/migrations"))
-        with engine.connect() as connection:
+        with engine.begin() as connection:
             config.attributes["connection"] = connection
+            config.attributes["database_environment"] = environment
+            config.attributes["migration_target"] = expected_target
             command.upgrade(config, "head")
-            connection.commit()
+            if post_migration is not None:
+                post_migration(connection)
     finally:
         engine.dispose()
 
@@ -54,10 +71,10 @@ def bootstrap(
         if parsed.path not in ("", "/") or parsed.query or parsed.fragment:
             raise ValueError("Register a site origin, without a path, query, or fragment")
         base_url = validate_url(base_url, fixture=False).rstrip("/")
-    migrate(settings.database_url)
+    migrate(settings.database_url, environment=settings.environment)
     if migrate_only:
         return {"status": "migrated"}
-    engine = make_engine(settings.database_url)
+    engine = make_engine(settings.database_url, environment=settings.environment)
     try:
         with make_session_factory(engine)() as session:
             site = session.scalar(select(m.Site).where(m.Site.base_url == base_url))
@@ -101,7 +118,8 @@ def main(argv: list[str] | None = None) -> int:
             from dotenv import dotenv_values
             values = dotenv_values(args.env_file)
             url = os.environ.get("DATABASE_URL") or values.get("DATABASE_URL") or "sqlite:///./seo-autonomous.db"
-            migrate(url)
+            environment = os.environ.get("ENVIRONMENT") or values.get("ENVIRONMENT")
+            migrate(url, environment=environment)
             result = {"status": "migrated"}
         else:
             result = bootstrap(Settings(_env_file=args.env_file), demo=args.demo, domain=args.domain, name=args.name)

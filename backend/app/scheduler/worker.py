@@ -13,10 +13,9 @@ from zoneinfo import ZoneInfo
 from apscheduler.executors.pool import ThreadPoolExecutor
 from apscheduler.schedulers.blocking import BlockingScheduler
 from apscheduler.triggers.cron import CronTrigger
-from sqlalchemy import text
 
-from backend.app.config.settings import Settings, get_settings
-from backend.app.db.readiness import verify_schema_revision
+from backend.app.config.settings import Settings
+from backend.app.db.readiness import verify_database_readiness
 from backend.app.db.models import utcnow
 from backend.app.db.session import make_engine, make_session_factory
 from backend.app.scheduler.jobs import (
@@ -31,6 +30,28 @@ CADENCE = (
     (WEEKLY_REVIEW, 6, 0, "mon"),
 )
 HEARTBEAT_PATH = Path(os.getenv("SCHEDULER_HEARTBEAT_PATH", "/tmp/seo-worker-heartbeat.json"))
+
+
+def load_worker_settings() -> Settings:
+    """Force the executable capability even when SERVICE_ROLE is forged."""
+    bearer_names = {"API_TOKEN", "APPROVAL_TOKEN", "ADMIN_TOKEN"}
+    if any(key.upper() in bearer_names and value for key, value in os.environ.items()):
+        raise ValueError("Worker executable must not receive human or API bearer capabilities")
+    database_url = os.environ.get("DATABASE_URL")
+    if database_url is None:
+        # Compose supplies discrete POSTGRES_* fields so credentials need not be
+        # interpolated into a URI. Health checks launch this module directly,
+        # outside the long-running process whose entrypoint built DATABASE_URL.
+        from docker.entrypoint import database_url_from_environment
+
+        database_url = database_url_from_environment(environment=os.environ.get("ENVIRONMENT"))
+    return Settings(
+        service_role="worker",
+        database_url=database_url,
+        api_token=None,
+        approval_token=None,
+        admin_token=None,
+    )
 
 
 def describe_schedule(settings: Settings) -> list[dict]:
@@ -86,13 +107,9 @@ def database_healthy(settings: Settings) -> bool:
     """
     engine = None
     try:
-        engine = make_engine(settings.database_url)
+        engine = make_engine(settings.database_url, environment=settings.environment)
         with engine.connect() as connection:
-            connection.execute(text("SELECT 1"))
-            verify_schema_revision(connection)
-            if settings.environment == "production":
-                from scripts.grant_runtime import verify_runtime_role
-                verify_runtime_role(connection)
+            verify_database_readiness(connection, environment=settings.environment, profile="worker")
         return True
     except Exception:
         return False
@@ -131,14 +148,14 @@ def main(argv: list[str] | None = None) -> int:
     args = parser.parse_args(argv)
     if args.healthcheck:
         try:
-            return 0 if worker_healthy(get_settings()) else 1
+            return 0 if worker_healthy(load_worker_settings()) else 1
         except Exception:
             return 1
     if args.site_id and not args.once:
         parser.error("--site-id requires --once")
     engine = None
     try:
-        settings = get_settings()
+        settings = load_worker_settings()
         if args.describe:
             print(json.dumps(describe_schedule(settings)))
             return 0
@@ -149,13 +166,10 @@ def main(argv: list[str] | None = None) -> int:
                             format="%(asctime)s %(levelname)s %(name)s %(message)s")
         from backend.app.observability.logging import configure_tracing
         configure_tracing()
-        engine = make_engine(settings.database_url)
+        engine = make_engine(settings.database_url, environment=settings.environment)
         factory = make_session_factory(engine)
         with engine.connect() as connection:
-            verify_schema_revision(connection)
-            if settings.environment == "production":
-                from scripts.grant_runtime import verify_runtime_role
-                verify_runtime_role(connection)
+            verify_database_readiness(connection, environment=settings.environment, profile="worker")
         if args.once:
             results = run_scheduled_job(factory, settings, args.once, site_id=args.site_id)
             print(json.dumps({"job": args.once, "sites": [{key: row[key] for key in ("site_id", "job_id", "status") if key in row}

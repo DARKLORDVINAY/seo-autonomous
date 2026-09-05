@@ -218,6 +218,9 @@ def import_benchmark_attestation(
         settings.benchmark_expected_source_fingerprint,
         settings.benchmark_expected_evaluation_id,
         settings.benchmark_expected_challenge_sha256,
+        settings.benchmark_expected_observations_sha256,
+        settings.benchmark_expected_predictions_sha256,
+        settings.benchmark_expected_truth_commitment_sha256,
         settings.benchmark_expected_execution_environment_sha256,
     )
     if not all(required):
@@ -248,6 +251,10 @@ def import_benchmark_attestation(
         raise HTTPException(422, "Benchmark attestation does not match the intended evaluation and challenge")
     if attestation.execution_environment_sha256 != settings.benchmark_expected_execution_environment_sha256:
         raise HTTPException(422, "Benchmark attestation does not match the preregistered execution environment")
+    if (attestation.observations_sha256 != settings.benchmark_expected_observations_sha256
+            or attestation.predictions_sha256 != settings.benchmark_expected_predictions_sha256
+            or attestation.truth_commitment_sha256 != settings.benchmark_expected_truth_commitment_sha256):
+        raise HTTPException(422, "Benchmark attestation does not match frozen observation, prediction and truth commitments")
     content = {
         **public_attestation_summary(attestation),
         "signature_verified": True,

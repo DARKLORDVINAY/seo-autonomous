@@ -27,6 +27,18 @@ JOB_NAMES = (DAILY_CYCLE, INTEGRITY_CRAWL, EVENING_MEASUREMENT, WEEKLY_REVIEW)
 MAX_OBSERVATION_ATTEMPTS = 3
 
 
+def verify_worker_tick(factory: sessionmaker, settings: Settings) -> None:
+    """Recheck the worker DB capability before every scheduled dispatch."""
+    if settings.environment != "production":
+        return
+    if settings.service_role != "worker":
+        raise ValueError("Production scheduled dispatch requires the forced worker service role")
+    from backend.app.db.readiness import verify_database_readiness
+
+    with factory() as session:
+        verify_database_readiness(session.connection(), environment=settings.environment, profile="worker")
+
+
 def period_key(job_name: str, now: datetime, timezone_name: str) -> str:
     if job_name not in JOB_NAMES:
         raise ValueError("Unknown scheduled job")
@@ -58,7 +70,10 @@ def integrity_crawl(session: Session, site: m.Site, settings: Settings) -> dict:
 
 
 def evening_measurement(session: Session, site: m.Site, settings: Settings) -> dict:
-    return {**measurement.evaluate_due_experiments(session, site.id), "model_calls": 0}
+    return {
+        **measurement.evaluate_due_experiments(session, site.id, authority_updates_allowed=False),
+        "model_calls": 0,
+    }
 
 
 def weekly_review(session: Session, site: m.Site, settings: Settings) -> dict:
@@ -222,6 +237,7 @@ def run_scheduled_job(
 ) -> list[dict]:
     if job_name not in JOB_NAMES:
         raise ValueError("Unknown scheduled job")
+    verify_worker_tick(factory, settings)
     now = scheduled_for or m.utcnow()
     key = period_key(job_name, now, settings.scheduler_timezone)
     with factory() as session:

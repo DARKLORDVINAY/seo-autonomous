@@ -34,13 +34,13 @@ def test_invalid_authority_fails_closed(kwargs):
 
 
 def test_production_reads_can_boot_without_write_authority():
-    config = Settings(_env_file=None, environment="production", database_url="postgresql+psycopg://db/seo", api_token="x" * 40)
+    config = Settings(_env_file=None, environment="production", database_url="postgresql+psycopg://seo@db/seo", api_token="x" * 40)
     assert not config.production_enabled
 
 
 def test_production_worker_boots_without_human_bearer_capabilities():
     config = Settings(_env_file=None, environment="production", service_role="worker",
-                      database_url="postgresql+psycopg://db/seo")
+                      database_url="postgresql+psycopg://seo@db/seo")
     assert config.api_token is config.approval_token is config.admin_token is None
 
 
@@ -72,13 +72,13 @@ def test_every_configured_production_authority_rejects_short_tokens(field, lengt
     tokens = {"api_token": "a" * 32, "approval_token": "b" * 32, "admin_token": "c" * 32}
     tokens[field] = "x" * length
     with pytest.raises(ValidationError, match="at least 32 characters"):
-        Settings(_env_file=None, environment="production", database_url="postgresql+psycopg://db/seo",
+        Settings(_env_file=None, environment="production", database_url="postgresql+psycopg://seo@db/seo",
                  production_enabled=production_enabled, shadow_mode=not production_enabled, **tokens)
 
 
 @pytest.mark.parametrize("production_enabled", [False, True])
 def test_distinct_production_authority_tokens_accept_minimum_length(production_enabled):
-    config = Settings(_env_file=None, environment="production", database_url="postgresql+psycopg://db/seo",
+    config = Settings(_env_file=None, environment="production", database_url="postgresql+psycopg://seo@db/seo",
                       api_token="a" * 32, approval_token="b" * 32, admin_token="c" * 32,
                       production_enabled=production_enabled, shadow_mode=not production_enabled)
     assert config.production_enabled is production_enabled

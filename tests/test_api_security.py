@@ -53,6 +53,63 @@ class CountingCMS(FixtureCMS):
         return result
 
 
+def test_direct_asgi_startup_fails_before_serving_with_invalid_production_database_profile(monkeypatch):
+    from backend.app import main as main_module
+
+    settings = Settings(
+        _env_file=None,
+        environment="production",
+        database_url="postgresql+psycopg://seo_api@db/seo",
+        api_token="x" * 40,
+    )
+
+    class ConnectionContext:
+        def __enter__(self):
+            return object()
+
+        def __exit__(self, *_args):
+            return None
+
+    class Engine:
+        def connect(self):
+            return ConnectionContext()
+
+    observed = []
+
+    def reject(_connection, *, environment, profile, privilege_cache_seconds):
+        observed.append((environment, profile, privilege_cache_seconds))
+        raise ValueError("overprivileged database identity")
+
+    monkeypatch.setattr(main_module, "get_settings", lambda: settings)
+    monkeypatch.setattr(main_module, "default_engine", lambda: Engine())
+    monkeypatch.setattr(main_module, "verify_database_readiness", reject)
+    with pytest.raises(ValueError, match="overprivileged"):
+        with TestClient(app):
+            raise AssertionError("ASGI traffic must not be served")
+    assert observed == [("production", "api", 0)]
+    assert app.state.production_admitted is False
+
+
+def test_lifespan_disabled_production_server_is_admission_blocked(monkeypatch):
+    from backend.app import main as main_module
+
+    settings = Settings(
+        _env_file=None,
+        environment="production",
+        database_url="postgresql+psycopg://seo_api@db/seo",
+        api_token="x" * 40,
+    )
+    monkeypatch.setattr(main_module, "get_settings", lambda: settings)
+    monkeypatch.setattr(main_module, "verify_api_startup", lambda: None)
+    app.state.production_admitted = False
+    with TestClient(app, raise_server_exceptions=False) as client:
+        # Emulate a server with disabled lifespan after its context startup.
+        app.state.production_admitted = False
+        response = client.get("/api/sites", headers={"Authorization": "Bearer " + "x" * 40})
+    assert response.status_code == 503
+    assert response.json()["detail"] == "Production startup admission has not completed"
+
+
 @dataclass
 class APICase:
     client: TestClient
@@ -389,6 +446,9 @@ def test_admin_can_import_only_a_pinned_signed_aggregate_without_granting_author
     api_case.settings.benchmark_expected_source_fingerprint = "d" * 64
     api_case.settings.benchmark_expected_evaluation_id = "bbbbbbbb-bbbb-4bbb-8bbb-bbbbbbbbbbbb"
     api_case.settings.benchmark_expected_challenge_sha256 = "a" * 64
+    api_case.settings.benchmark_expected_observations_sha256 = "b" * 64
+    api_case.settings.benchmark_expected_predictions_sha256 = "c" * 64
+    api_case.settings.benchmark_expected_truth_commitment_sha256 = "e" * 64
     api_case.settings.benchmark_expected_execution_environment_sha256 = "1" * 64
     metrics = AggregateMetrics(
         true_positives=1,
@@ -406,6 +466,7 @@ def test_admin_can_import_only_a_pinned_signed_aggregate_without_granting_author
         appropriate_uncertain_outcomes=0,
         disposition_overclaims=0,
         coverage_overclaims=0,
+        unsubstantiated_candidates=0,
         protocol_errors=0,
     )
     attestation = BenchmarkAttestation(
@@ -435,6 +496,7 @@ def test_admin_can_import_only_a_pinned_signed_aggregate_without_granting_author
             false_no_action_max=0,
             disposition_overclaims_max=0,
             coverage_overclaims_max=0,
+            unsubstantiated_candidates_max=0,
             protocol_errors_max=0,
         ),
         engineering_benchmark_gate_passed=False,
@@ -452,7 +514,11 @@ def test_admin_can_import_only_a_pinned_signed_aggregate_without_granting_author
         live_model_executed=False,
         level_2_eligible=False,
         limitations=[
+            "synthetic_observations",
             "structural_not_business_outcomes",
+            "rendered_fixtures_not_browser_execution",
+            "no_live_search_measurement",
+            "scorer_cannot_prove_evaluator_independence",
             "python_audit_boundary_not_kernel_isolation",
             "runtime_artifacts_not_cryptographically_verified",
             "benchmark_does_not_grant_autonomy",
@@ -524,6 +590,9 @@ def test_admin_can_import_only_a_pinned_signed_aggregate_without_granting_author
     different_environment = attestation.model_copy(deep=True)
     different_environment.execution_environment_sha256 = "9" * 64
     assert api_case.request("POST", endpoint, role="admin", json=signed(different_environment)).status_code == 422
+    different_predictions = attestation.model_copy(deep=True)
+    different_predictions.predictions_sha256 = "9" * 64
+    assert api_case.request("POST", endpoint, role="admin", json=signed(different_predictions)).status_code == 422
 
 
 def test_internal_link_destination_must_be_inventoried_in_the_same_site(api_case):

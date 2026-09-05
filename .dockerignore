@@ -16,6 +16,8 @@ runtime
 artifacts
 backups
 *.dump
+*.backup
+.*.partial
 node_modules
 tests
 mcp/tests

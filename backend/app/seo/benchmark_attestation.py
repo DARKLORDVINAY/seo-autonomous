@@ -75,6 +75,7 @@ class AggregateMetrics(AttestationModel):
     appropriate_uncertain_outcomes: int = Field(ge=0, le=100_000)
     disposition_overclaims: int = Field(ge=0, le=100_000)
     coverage_overclaims: int = Field(ge=0, le=100_000)
+    unsubstantiated_candidates: int = Field(ge=0, le=1_000_000)
     protocol_errors: int = Field(ge=0, le=100_000)
 
     @model_validator(mode="after")
@@ -110,6 +111,7 @@ class EngineeringThresholds(AttestationModel):
     false_no_action_max: Literal[0]
     disposition_overclaims_max: Literal[0]
     coverage_overclaims_max: Literal[0]
+    unsubstantiated_candidates_max: Literal[0]
     protocol_errors_max: Literal[0]
 
 
@@ -155,7 +157,18 @@ class BenchmarkAttestation(AttestationModel):
             raise ValueError("Attestation timestamp must include a timezone")
         if len(set(self.limitations)) != len(self.limitations):
             raise ValueError("Limitation codes must be unique")
-        required = {"structural_not_business_outcomes", "benchmark_does_not_grant_autonomy"}
+        # A signature verifies the aggregate's origin, not organizational
+        # independence, live-search behavior, browser rendering, or business
+        # outcomes.  Those limitations apply to every v3 fixture attestation,
+        # including an externally isolated passing run.
+        required = {
+            "synthetic_observations",
+            "structural_not_business_outcomes",
+            "rendered_fixtures_not_browser_execution",
+            "no_live_search_measurement",
+            "scorer_cannot_prove_evaluator_independence",
+            "benchmark_does_not_grant_autonomy",
+        }
         if not required.issubset(self.limitations):
             raise ValueError("Attestation omits mandatory benchmark limitations")
         if self.metrics.true_positives + self.metrics.false_negatives != self.issue_unit_count:
@@ -191,9 +204,11 @@ class BenchmarkAttestation(AttestationModel):
                 self.metrics.false_no_action > self.thresholds.false_no_action_max
                 or self.metrics.disposition_overclaims > self.thresholds.disposition_overclaims_max
                 or self.metrics.coverage_overclaims > self.thresholds.coverage_overclaims_max
+                or self.metrics.unsubstantiated_candidates > self.thresholds.unsubstantiated_candidates_max
                 or self.metrics.protocol_errors > self.thresholds.protocol_errors_max
+                or self.metrics.appropriate_uncertain_outcomes != self.metrics.ambiguous_cases
             ):
-                raise ValueError("A passing engineering gate cannot contain safety or protocol errors")
+                raise ValueError("A passing engineering gate cannot contain safety, ambiguity or protocol errors")
             if (
                 self.case_count < MIN_PASSING_CASES
                 or self.family_count < MIN_PASSING_FAMILIES

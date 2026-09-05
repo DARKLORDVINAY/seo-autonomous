@@ -84,6 +84,9 @@ def run_drill(session, site_id: str, release_dir: Path, work_dir: Path,
     session.flush()
     session.add(m.ActionEvent(site_id=site.id, action_id=action.id, event_type="requested", details_json={"scope": "artifact_only", "production_write": False}))
     session.commit()  # Record intent before touching the isolated release copy.
+    reverse_id: str | None = None
+    reverse_requested = False
+    rollback_stage: str | None = None
     try:
         shutil.copytree(release_dir, work_dir)
         _git(work_dir, "init", "--initial-branch=lab-drill")
@@ -108,9 +111,13 @@ def run_drill(session, site_id: str, release_dir: Path, work_dir: Path,
                 "baseline_commit": baseline_commit, "change_commit": changed_commit, "expected_tree": baseline_tree})
         session.add(reverse)
         session.flush()
+        reverse_id = reverse.id
         session.add(m.ActionEvent(site_id=site.id, action_id=reverse.id, event_type="requested", details_json={"scope": "artifact_only", "production_write": False}))
         session.commit()
+        reverse_requested = True
+        rollback_stage = "git_revert"
         _git(work_dir, "revert", "--no-edit", changed_commit)
+        rollback_stage = "restoration_verification"
         restored_commit = _git(work_dir, "rev-parse", "HEAD")
         restored_tree = _git(work_dir, "rev-parse", "HEAD^{tree}")
         if restored_tree != baseline_tree or (work_dir / relative_page).read_bytes() != before or _git(work_dir, "status", "--porcelain"):
@@ -130,8 +137,23 @@ def run_drill(session, site_id: str, release_dir: Path, work_dir: Path,
         return report
     except Exception as error:
         session.rollback()
-        session.add(m.ActionEvent(site_id=site.id, action_id=action.id, event_type="drill_failed",
-            details_json={"scope": "artifact_only", "error_type": type(error).__name__, "production_write": False}))
+        failure = {"scope": "artifact_only", "error_type": type(error).__name__,
+            "production_write": False, "stage": rollback_stage or "change_preparation"}
+        if reverse_requested and reverse_id is not None:
+            # Once the inverse has a durable request, its own lifecycle must end
+            # on that action. The successful original change remains immutable
+            # history rather than being mislabeled as the rollback failure.
+            reverse = session.get(m.Action, reverse_id)
+            if reverse is None:  # A committed request disappearing is storage corruption.
+                raise RuntimeError("Durable rollback action could not be recovered") from error
+            session.add(m.ActionEvent(site_id=site.id, action_id=reverse.id, event_type="failed",
+                details_json=failure))
+            session.add(m.RollbackEvent(site_id=site.id, action_id=action.id,
+                rollback_action_id=reverse.id, reason=reverse.reason, actor=reverse.actor,
+                status="failed", details_json=failure))
+        else:
+            session.add(m.ActionEvent(site_id=site.id, action_id=action.id, event_type="drill_failed",
+                details_json=failure))
         experiment.status, experiment.verdict = "failed", "inconclusive"
         session.commit()
         raise

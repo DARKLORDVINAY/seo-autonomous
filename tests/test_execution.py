@@ -50,6 +50,27 @@ class AtomicFixtureCMS:
         return self.page.model_copy(deep=True)
 
 
+class SeparateDraftFixtureCMS(AtomicFixtureCMS):
+    """Models a CMS where a draft does not mutate the source page."""
+
+    def __init__(self, page):
+        super().__init__(page)
+        self.drafts = {}
+
+    def get_page(self, external_id):
+        page = self.drafts.get(external_id, self.page)
+        return page.model_copy(deep=True)
+
+    def create_draft(self, title, content):
+        self.write_count += 1
+        external_id = f"draft-{self.write_count}"
+        draft = self.page.model_copy(update={
+            "external_id": external_id, "status": "draft", "title": title, "content": content,
+        }, deep=True)
+        self.drafts[external_id] = draft
+        return draft.model_copy(deep=True)
+
+
 @dataclass
 class Setup:
     session: object
@@ -122,6 +143,25 @@ def test_full_audited_execution_is_idempotent_and_versioned(setup):
     events = setup.session.scalars(select(ActionEvent).where(ActionEvent.action_id == first["action_id"])).all()
     assert {e.event_type for e in events} == {"requested", "dispatching", "succeeded"}
     assert first["details"]["before_hash"] != first["details"]["after_hash"]
+
+
+def test_one_approval_cannot_create_multiple_cms_drafts_with_new_keys(setup):
+    setup.cms = SeparateDraftFixtureCMS(setup.cms.page)
+    revision_id = setup.propose(
+        title="Qualified window-cleaning draft", kind="create_cms_draft", status="draft",
+    )
+    setup.verify(revision_id)
+    setup.approve(revision_id)
+
+    first = setup.execute(revision_id, key="first-draft")
+    second = setup.execute(revision_id, key="second-draft")
+
+    assert first["status"] == "succeeded", first
+    assert second["status"] == "blocked", second
+    assert second["details"]["reasons"] == ["revision_already_succeeded"]
+    assert second["details"]["existing_action_id"] == first["action_id"]
+    assert setup.cms.write_count == 1
+    assert len(setup.cms.drafts) == 1
 
 
 def test_level_one_needs_approval_despite_model_pass(setup):

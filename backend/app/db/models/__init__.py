@@ -86,6 +86,9 @@ class Site(Identified, Base):
     production_enabled: Mapped[bool] = mapped_column(Boolean, default=False)
     conversion_definition: Mapped[dict[str, Any]] = mapped_column(JSON, default=dict)
     config_json: Mapped[dict[str, Any]] = mapped_column(JSON, default=dict)
+    # A semantically inert column gives the worker enough PostgreSQL privilege
+    # to take a row lock without granting updates to authority-bearing fields.
+    coordination_token: Mapped[int] = mapped_column(Integer, default=0, server_default="0")
 
 
 class Page(TenantOwned, Base):

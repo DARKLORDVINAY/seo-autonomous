@@ -486,12 +486,19 @@ def _adjudicate_primary(session: Session, site: m.Site, experiment: m.Experiment
             "succeeded": record.succeeded, "automatic_graduation": False}
 
 
-def evaluate_due_experiments(session: Session, site_id: str, *, now: datetime | None = None) -> dict[str, Any]:
+def evaluate_due_experiments(
+    session: Session,
+    site_id: str,
+    *,
+    now: datetime | None = None,
+    authority_updates_allowed: bool = True,
+) -> dict[str, Any]:
     """Persist all due checkpoints and later evidence corrections, idempotently.
 
     This service owns a short database transaction and commits its audit trail.
     It does not perform network calls, CMS writes, privilege increases, or
-    automatic rollback. The caller may apply only autonomy-reduction advice.
+    automatic rollback. A scheduler caller cannot modify canonical authority;
+    it records any autonomy-reduction signal for API/operator review.
     """
     now = now or utcnow()
     if now.tzinfo is None or now.utcoffset() is None:
@@ -556,8 +563,9 @@ def evaluate_due_experiments(session: Session, site_id: str, *, now: datetime | 
     output["autonomy_reduction_recommendations"] = [group for group in output["calibration"]["groups"] if group["autonomy_recommendation"] == "reduce"]
     earned = set(site.config_json.get("earned_categories", []))
     revoked = sorted(earned & {group["action_category"] for group in output["autonomy_reduction_recommendations"]})
-    output["revoked_categories"] = revoked
-    if revoked:
+    output["recommended_revocations"] = revoked
+    output["revoked_categories"] = revoked if authority_updates_allowed else []
+    if revoked and authority_updates_allowed:
         site.config_json = {**site.config_json, "earned_categories": sorted(earned - set(revoked))}
         audit = m.Action(site_id=site.id, kind="reduce_autonomy", risk="LOW", actor="calibration-monitor",
             reason="Independently adjudicated outcomes crossed the poor-calibration threshold",
@@ -571,5 +579,27 @@ def evaluate_due_experiments(session: Session, site_id: str, *, now: datetime | 
             decision="Require human approval for " + ", ".join(revoked),
             rationale="Remove previously earned categories; evidence cannot automatically increase authority",
             uncertainty_json=output["calibration"]["quality_flags"], alternatives_json=["Pause all automation"]))
+    elif revoked:
+        recommendation_key = "calibration-reduction-recommendation:" + stable_hash({
+            "recommended": revoked, "report": output["calibration"],
+        })
+        audit = session.scalar(select(m.Action).where(
+            m.Action.site_id == site.id,
+            m.Action.idempotency_key == recommendation_key,
+        ))
+        if audit is None:
+            audit = m.Action(site_id=site.id, kind="recommend_autonomy_reduction", risk="LOW",
+                actor="calibration-monitor", reason="Worker cannot modify canonical site authority",
+                idempotency_key=recommendation_key,
+                payload_json={"recommended_revocations": revoked, "calibration": output["calibration"],
+                              "authority_update": False, "requires_api_or_operator_review": True})
+            session.add(audit)
+            session.flush()
+            session.add(m.ActionEvent(site_id=site.id, action_id=audit.id, event_type="recorded",
+                                      details_json={"scope": "authority_recommendation", "production_write": False}))
+            session.add(m.DecisionLog(site_id=site.id, action_id=audit.id, owner="calibration-monitor",
+                decision="Recommend removing earned categories: " + ", ".join(revoked),
+                rationale="The worker role is read-only on site authority; an API/operator decision is required",
+                uncertainty_json=output["calibration"]["quality_flags"], alternatives_json=["Pause all automation"]))
     session.commit()
     return output

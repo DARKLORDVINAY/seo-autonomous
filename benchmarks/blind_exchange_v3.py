@@ -555,7 +555,7 @@ def _aggregate_metrics(result: dict[str, Any]) -> AggregateMetrics:
     fields = {
         "true_positives", "false_positives", "false_negatives", "precision", "recall", "f1",
         "no_action_controls", "correct_no_action", "false_no_action", "appropriate_uncertain_outcomes",
-        "disposition_overclaims", "coverage_overclaims",
+        "disposition_overclaims", "coverage_overclaims", "unsubstantiated_candidates",
     }
     if any(name not in aggregate for name in fields):
         raise ValueError("Evaluator aggregate is incomplete")
@@ -645,6 +645,7 @@ def evaluate_and_sign(
             false_no_action_max=0,
             disposition_overclaims_max=0,
             coverage_overclaims_max=0,
+            unsubstantiated_candidates_max=0,
             protocol_errors_max=0,
         ),
         # This in-repository helper is a defense-in-depth reference runner, not

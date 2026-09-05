@@ -2,7 +2,7 @@
 
 A persistent, evidence-led SEO control loop optimising **incremental qualified organic conversion value**. Python 3.12, FastAPI, SQLAlchemy/Alembic, PostgreSQL, OpenAI Agents SDK, semantic MCP tools and a lightweight Mission Control dashboard.
 
-**Current release: Level 1, shadow by default.** The [26-page public Test Lab](https://seo-test-lab.pages.dev/) has passed its structural shadow benchmark and observed public rollback. Actual PostgreSQL/container CI passed 633 tests with zero skips. Durable hosting, Google ingestion and live model activation remain connection gates. A structural test is not evidence of SEO uplift. See the [verified Test Lab results](docs/TEST_LAB_RESULTS.md).
+**Current release: Level 1, shadow by default.** The [26-page public Test Lab](https://seo-test-lab.pages.dev/) has passed its structural shadow benchmark and observed public rollback. A historical linked commit passed its actual PostgreSQL/container CI gates; that result does not attest later local hardening changes until those gates run again for their exact commit. Durable hosting, Google ingestion and live model activation remain connection gates. A structural test is not evidence of SEO uplift. See the [verified Test Lab results](docs/TEST_LAB_RESULTS.md).
 
 ## Run the offline workspace
 
@@ -45,7 +45,7 @@ The built-in WordPress adapter deliberately blocks existing-page production upda
 .venv/bin/python -m alembic check
 ```
 
-See `docs/VERIFICATION.md` for the recorded checkpoint, exact gates and known limitations. GitHub Actions has exercised PostgreSQL, migration drift checking, restricted runtime-role checks and Compose startup. Two actual-PostgreSQL tests skip explicitly in local environments without `TEST_POSTGRES_URL`; both passed in the linked CI run.
+See `docs/VERIFICATION.md` for the recorded checkpoint, exact gates and known limitations. GitHub Actions has exercised PostgreSQL, migration drift checking, restricted runtime-role checks and Compose startup for the linked historical commit. The actual-PostgreSQL gates skip explicitly unless their disposable infrastructure is supplied; the backup/restore gate requires both `TEST_POSTGRES_URL` and the exact container ID in `TEST_POSTGRES_CONTAINER`. The current tree must earn its own CI receipt.
 
 ## Connect a real site
 

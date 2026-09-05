@@ -75,22 +75,48 @@ def test_actual_postgres_dump_restore_preserves_rows_audit_guards_and_roles(tmp_
             session.commit()
             evidence_id, action_id = evidence.id, action.id
         before = snapshot(source)
+        with source.connect() as connection:
+            server_identity = str(connection.execute(text(
+                "SELECT system_identifier FROM pg_control_system()"
+            )).scalar_one())
 
         def container_client(command, **kwargs):
             command = list(command)
             arguments = {key: value for key, value in kwargs.items() if key != "env"}
-            if command[0] == "pg_dump":
+            connection_free = [argument for argument in command[1:] if not argument.startswith("--dbname=")]
+            if command[1:] == ["--version"]:
+                invoked = ["docker", "exec", "-i", container, *command]
+            elif command[0] == "psql":
+                invoked = ["docker", "exec", "-i", container, "psql", "--username", url.username,
+                           "--dbname", source_name, *connection_free]
+            elif command[0] == "pg_dump":
                 invoked = ["docker", "exec", "-i", container, "pg_dump", "--username", url.username,
-                           "--dbname", source_name, *command[1:]]
+                           "--dbname", source_name, *connection_free]
             else:
                 assert command[:2] == ["pg_restore", "--list"]
                 invoked = ["docker", "exec", "-i", container, "pg_restore", "--list"]
                 arguments["input"] = Path(command[2]).read_bytes()
             return subprocess.run(invoked, **arguments)
 
-        receipt = backup("disposable_ci_source", tmp_path / "private-backups", writers_stopped=True, run=container_client)
+        receipt = backup(
+            "disposable_ci_source",
+            tmp_path / "private-backups",
+            writers_stopped=True,
+            expected_database=source_name,
+            expected_server_identity=server_identity,
+            expected_server_address="unix-socket",
+            expected_server_port=0,
+            expected_schema_heads=tuple(before["schema_heads"]),
+            tls_server_name="local-socket-test",
+            release_image="registry.test/seo@sha256:" + "a" * 64,
+            release_commit="b" * 40,
+            runtime_identity="disposable-ci-api-worker",
+            checkpoint_identity="disposable-ci-backup-restore-drill",
+            run=container_client,
+            _allow_local_socket_test_adapter=True,
+        )
         assert receipt["archive_list_verified"] and not receipt["restore_verified"]
-        archive = (tmp_path / "private-backups" / receipt["archive"]).read_bytes()
+        archive = (tmp_path / "private-backups" / receipt["bundle"] / receipt["archive"]).read_bytes()
         result = subprocess.run(["docker", "exec", "-i", container, "pg_restore", "--exit-on-error", "--single-transaction",
             "--no-owner", "--no-acl", "--username", url.username, "--dbname", restored_name],
             input=archive, capture_output=True, timeout=60, check=False)

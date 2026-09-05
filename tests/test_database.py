@@ -13,6 +13,7 @@ from alembic.autogenerate import compare_metadata
 from alembic.config import Config
 from alembic.migration import MigrationContext
 from sqlalchemy import inspect, text
+from sqlalchemy.engine import make_url
 from sqlalchemy.exc import DBAPIError, IntegrityError
 
 from backend.app.db.models import (
@@ -211,7 +212,7 @@ def test_migration_matches_model_and_installs_triggers(tmp_path):
         triggers = connection.execute(text("SELECT name FROM sqlite_master WHERE type='trigger'" )).scalars().all()
         assert len(triggers) == 2 * len(APPEND_ONLY_TABLES)
     with engine.connect() as connection:
-        assert connection.scalar(text("SELECT version_num FROM alembic_version")) == "0001_canonical"
+        assert connection.scalar(text("SELECT version_num FROM alembic_version")) == "0002_runtime_role_split"
     engine.dispose()
 
 
@@ -228,39 +229,100 @@ def test_postgresql_migration_compiles_offline(monkeypatch):
     assert "FOREIGN KEY(revision_id, site_id, revision_hash)" in sql
 
 
+def test_direct_alembic_rejects_remote_production_tls_downgrade(monkeypatch):
+    monkeypatch.delenv("DATABASE_URL", raising=False)
+    monkeypatch.setenv("ENVIRONMENT", "production")
+    config = Config(str(ROOT / "alembic.ini"))
+    config.set_main_option("script_location", str(ROOT / "backend/app/db/migrations"))
+    config.set_main_option(
+        "sqlalchemy.url",
+        "postgresql+psycopg://owner@database.example.test/seo?sslmode=require",
+    )
+    with pytest.raises(ValueError, match="sslmode=verify-full"):
+        command.upgrade(config, "head", sql=True)
+
+
 @pytest.mark.skipif(not os.environ.get("TEST_POSTGRES_URL"), reason="Live Postgres gate requires TEST_POSTGRES_URL")
 def test_postgresql_live_migration_audit_and_leases():
     """Run in CI against actual PostgreSQL; never claim SQLite substitutes for it."""
+    from scripts.bootstrap import migrate
+
+    migrate(os.environ["TEST_POSTGRES_URL"], environment="test")
     engine = make_engine(os.environ["TEST_POSTGRES_URL"])
-    schema = "test_seo_" + uuid4().hex
     with engine.connect() as connection:
-        connection.execute(text(f'CREATE SCHEMA "{schema}"'))
-        connection.commit()
-        connection.execute(text(f'SET search_path TO "{schema}"'))
-        connection.commit()
+        factory = make_session_factory(connection)
+        with factory() as session:
+            _, _, rows = audit_rows(session)
+            assert rows["evidence"].created_at.tzinfo is not None
+            with pytest.raises(DBAPIError, match="append-only"):
+                session.execute(text("UPDATE evidence SET source='tampered'"))
+            session.rollback()
+            with pytest.raises(DBAPIError, match="append-only"):
+                session.execute(text("TRUNCATE evidence CASCADE"))
+            session.rollback()
+            first = acquire_lease(session, "job:" + uuid4().hex, "worker-1")
+            session.commit()
+            assert first
+    engine.dispose()
+
+
+@pytest.mark.skipif(not os.environ.get("TEST_POSTGRES_URL"), reason="Live Postgres gate requires TEST_POSTGRES_URL")
+def test_direct_production_alembic_pins_hostile_default_and_persists(monkeypatch):
+    """A fresh disposable database proves direct Alembic's target and transaction gates."""
+    owner_url = make_url(os.environ["TEST_POSTGRES_URL"])
+    database = "migration_gate_" + uuid4().hex[:16]
+    owner_engine = make_engine(owner_url.render_as_string(hide_password=False), environment="test")
+    target_engine = None
+    try:
+        with owner_engine.connect().execution_options(isolation_level="AUTOCOMMIT") as connection:
+            system_identifier = connection.scalar(text(
+                "SELECT system_identifier::text FROM pg_catalog.pg_control_system()"
+            ))
+            connection.execute(text(f'CREATE DATABASE "{database}"'))
+        target_url = owner_url.set(database=database).render_as_string(hide_password=False)
+        target_engine = make_engine(target_url, environment="test")
+        with target_engine.begin() as connection:
+            connection.execute(text("CREATE SCHEMA hostile"))
+            connection.execute(text(
+                "CREATE TABLE hostile.alembic_version (version_num varchar(32) PRIMARY KEY)"
+            ))
+            connection.execute(text(
+                "INSERT INTO hostile.alembic_version VALUES ('hostile_marker')"
+            ))
+        with owner_engine.connect().execution_options(isolation_level="AUTOCOMMIT") as connection:
+            connection.execute(text(f'ALTER DATABASE "{database}" SET search_path TO hostile, public'))
+        target_engine.dispose()
+        target_engine = None
+
+        for key, value in {
+            "ENVIRONMENT": "production",
+            "DATABASE_URL": target_url,
+            "SEO_RELEASE_IMAGE": "sha256:" + "a" * 64,
+            "SEO_MIGRATION_EXPECTED_DATABASE": database,
+            "SEO_MIGRATION_EXPECTED_SYSTEM_IDENTIFIER": system_identifier,
+            "SEO_MIGRATION_MODE": "bootstrap",
+            "SEO_MIGRATION_EXPECTED_SCHEMA_HEADS": "uninitialized",
+        }.items():
+            monkeypatch.setenv(key, value)
         config = Config(str(ROOT / "alembic.ini"))
         config.set_main_option("script_location", str(ROOT / "backend/app/db/migrations"))
-        config.attributes["connection"] = connection
-        try:
-            command.upgrade(config, "head")
-            connection.commit()
-            factory = make_session_factory(connection)
-            with factory() as session:
-                _, _, rows = audit_rows(session)
-                assert rows["evidence"].created_at.tzinfo is not None
-                with pytest.raises(DBAPIError, match="append-only"):
-                    session.execute(text("UPDATE evidence SET source='tampered'"))
-                session.rollback()
-                with pytest.raises(DBAPIError, match="append-only"):
-                    session.execute(text("TRUNCATE evidence CASCADE"))
-                session.rollback()
-                first = acquire_lease(session, "job", "worker-1")
-                session.commit()
-                assert first and acquire_lease(session, "job", "worker-2") is None
-                session.commit()
-        finally:
-            connection.rollback()
-            connection.execute(text("SET search_path TO public"))
-            connection.execute(text(f'DROP SCHEMA "{schema}" CASCADE'))
-            connection.commit()
-    engine.dispose()
+        command.upgrade(config, "head")
+
+        target_engine = make_engine(target_url, environment="test")
+        with target_engine.connect() as connection:
+            assert connection.scalar(text(
+                "SELECT version_num FROM public.alembic_version"
+            )) == "0002_runtime_role_split"
+            assert connection.scalar(text(
+                "SELECT version_num FROM hostile.alembic_version"
+            )) == "hostile_marker"
+    finally:
+        if target_engine is not None:
+            target_engine.dispose()
+        with owner_engine.connect().execution_options(isolation_level="AUTOCOMMIT") as connection:
+            connection.execute(text(
+                "SELECT pg_catalog.pg_terminate_backend(pid) FROM pg_catalog.pg_stat_activity "
+                "WHERE datname = :database AND pid <> pg_catalog.pg_backend_pid()"
+            ), {"database": database})
+            connection.execute(text(f'DROP DATABASE IF EXISTS "{database}"'))
+        owner_engine.dispose()

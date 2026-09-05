@@ -495,6 +495,9 @@ def test_owner_cli_exposes_only_fingerprints_response_receipt_and_verified_aggre
         "--expected-source-fingerprint", protocol_source_fingerprint(),
         "--expected-evaluation-id", envelope.attestation.evaluation_id,
         "--expected-challenge-sha256", envelope.attestation.challenge_sha256,
+        "--expected-observations-sha256", envelope.attestation.observations_sha256,
+        "--expected-predictions-sha256", envelope.attestation.predictions_sha256,
+        "--expected-truth-commitment-sha256", envelope.attestation.truth_commitment_sha256,
         "--expected-execution-environment-sha256", envelope.attestation.execution_environment_sha256,
     ], cwd=ROOT, capture_output=True, text=True, check=False, timeout=30)
     assert verify.returncode == 0, verify.stderr
@@ -512,10 +515,124 @@ def test_owner_cli_exposes_only_fingerprints_response_receipt_and_verified_aggre
         "--expected-source-fingerprint", protocol_source_fingerprint(),
         "--expected-evaluation-id", envelope.attestation.evaluation_id,
         "--expected-challenge-sha256", envelope.attestation.challenge_sha256,
+        "--expected-observations-sha256", envelope.attestation.observations_sha256,
+        "--expected-predictions-sha256", envelope.attestation.predictions_sha256,
+        "--expected-truth-commitment-sha256", envelope.attestation.truth_commitment_sha256,
         "--expected-execution-environment-sha256", envelope.attestation.execution_environment_sha256,
     ], cwd=ROOT, capture_output=True, text=True, check=False, timeout=30)
     assert wrong_pin.returncode == 1
     assert json.loads(wrong_pin.stdout)["status"] == "blocked"
+
+
+@pytest.mark.parametrize(
+    ("argument", "wrong_value"),
+    [
+        ("--expected-definition-sha256", "0" * 64),
+        ("--expected-source-fingerprint", "0" * 64),
+        ("--expected-evaluation-id", "77777777-7777-4777-8777-777777777777"),
+        ("--expected-challenge-sha256", "0" * 64),
+        ("--expected-observations-sha256", "0" * 64),
+        ("--expected-predictions-sha256", "0" * 64),
+        ("--expected-truth-commitment-sha256", "0" * 64),
+        ("--expected-execution-environment-sha256", "0" * 64),
+        ("--max-age-hours", "0"),
+    ],
+)
+def test_owner_cli_fails_closed_on_every_identity_commitment_and_age_pin(
+    exchange, tmp_path, argument, wrong_value,
+):
+    private_key, public_key, signed = exchange
+    response = create_response(signed, public_key, expected_key_id=KEY_ID, now=NOW)
+    envelope, _ = evaluate_and_sign(
+        signed, response, private_truth(), scorer=toy_scorer,
+        benchmark_definition=BENCHMARK_DEFINITION,
+        trusted_public_key_pem=public_key, expected_key_id=KEY_ID,
+        private_key=private_key, truth_commitment_secret=TRUTH_COMMITMENT_SECRET, issued_at=NOW,
+    )
+    attestation_path = tmp_path / "signed-attestation.json"
+    public_key_path = tmp_path / "evaluator-public.pem"
+    attestation_path.write_bytes(canonical_bytes(envelope))
+    public_key_path.write_bytes(public_key)
+    arguments = {
+        "--expected-definition-sha256": envelope.attestation.benchmark_definition_sha256,
+        "--expected-source-fingerprint": envelope.attestation.source_fingerprint,
+        "--expected-evaluation-id": envelope.attestation.evaluation_id,
+        "--expected-challenge-sha256": envelope.attestation.challenge_sha256,
+        "--expected-observations-sha256": envelope.attestation.observations_sha256,
+        "--expected-predictions-sha256": envelope.attestation.predictions_sha256,
+        "--expected-truth-commitment-sha256": envelope.attestation.truth_commitment_sha256,
+        "--expected-execution-environment-sha256": envelope.attestation.execution_environment_sha256,
+        "--max-age-hours": "168",
+    }
+    arguments[argument] = wrong_value
+    command = [
+        sys.executable,
+        str(ROOT / "scripts/blind_evaluation_v3.py"),
+        "verify-attestation",
+        "--attestation", str(attestation_path),
+        "--public-key", str(public_key_path),
+        "--key-id", KEY_ID,
+    ]
+    for name, value in arguments.items():
+        command.extend((name, value))
+    rejected = subprocess.run(
+        command, cwd=ROOT, capture_output=True, text=True, check=False, timeout=30,
+    )
+    assert rejected.returncode == 1
+    assert json.loads(rejected.stdout)["status"] == "blocked"
+    assert PRIVATE_TRUTH_MARKER not in rejected.stdout + rejected.stderr
+
+
+def test_owner_cli_rejects_stale_attestation_even_when_every_identity_pin_matches(tmp_path):
+    private_key = Ed25519PrivateKey.generate()
+    public_key = public_key_pem(private_key)
+    challenge_time = NOW - timedelta(hours=6)
+    evaluation_time = NOW - timedelta(hours=2)
+    signed = create_signed_challenge(
+        [observation_case()], private_truth(),
+        evaluation_id="abababab-abab-4bab-8bab-abababababab",
+        evaluator_id=EVALUATOR_ID,
+        key_id=KEY_ID,
+        private_key=private_key,
+        benchmark_definition=BENCHMARK_DEFINITION,
+        scorer=toy_scorer,
+        accepted_source_fingerprint=protocol_source_fingerprint(),
+        truth_commitment_secret=TRUTH_COMMITMENT_SECRET,
+        issued_at=challenge_time,
+        expires_at=NOW + timedelta(hours=18),
+    )
+    response = create_response(signed, public_key, expected_key_id=KEY_ID, now=challenge_time)
+    envelope, _ = evaluate_and_sign(
+        signed, response, private_truth(), scorer=toy_scorer,
+        benchmark_definition=BENCHMARK_DEFINITION,
+        trusted_public_key_pem=public_key, expected_key_id=KEY_ID,
+        private_key=private_key, truth_commitment_secret=TRUTH_COMMITMENT_SECRET,
+        issued_at=evaluation_time,
+    )
+    attestation_path = tmp_path / "stale-attestation.json"
+    public_key_path = tmp_path / "evaluator-public.pem"
+    attestation_path.write_bytes(canonical_bytes(envelope))
+    public_key_path.write_bytes(public_key)
+    rejected = subprocess.run([
+        sys.executable,
+        str(ROOT / "scripts/blind_evaluation_v3.py"),
+        "verify-attestation",
+        "--attestation", str(attestation_path),
+        "--public-key", str(public_key_path),
+        "--key-id", KEY_ID,
+        "--expected-definition-sha256", envelope.attestation.benchmark_definition_sha256,
+        "--expected-source-fingerprint", envelope.attestation.source_fingerprint,
+        "--expected-evaluation-id", envelope.attestation.evaluation_id,
+        "--expected-challenge-sha256", envelope.attestation.challenge_sha256,
+        "--expected-observations-sha256", envelope.attestation.observations_sha256,
+        "--expected-predictions-sha256", envelope.attestation.predictions_sha256,
+        "--expected-truth-commitment-sha256", envelope.attestation.truth_commitment_sha256,
+        "--expected-execution-environment-sha256", envelope.attestation.execution_environment_sha256,
+        "--max-age-hours", "1",
+    ], cwd=ROOT, capture_output=True, text=True, check=False, timeout=30)
+    assert rejected.returncode == 1
+    assert json.loads(rejected.stdout)["status"] == "blocked"
+    assert PRIVATE_TRUTH_MARKER not in rejected.stdout + rejected.stderr
 
 
 def test_owner_cli_bounds_evaluator_public_key_input(tmp_path):
@@ -649,7 +766,61 @@ def test_aggregate_arithmetic_and_passing_safety_claims_are_validated(exchange):
     invalid["attestation"]["engineering_benchmark_gate_passed"] = True
     with pytest.raises(ValueError, match="passing engineering gate"):
         verify_signed_attestation(invalid, public_key, expected_key_id=KEY_ID)
+    unsupported = copy.deepcopy(envelope.model_dump(mode="json"))
+    unsupported["attestation"]["metrics"]["unsubstantiated_candidates"] = 1
+    unsupported["attestation"]["engineering_benchmark_gate_passed"] = True
+    with pytest.raises(ValueError, match="passing engineering gate"):
+        verify_signed_attestation(unsupported, public_key, expected_key_id=KEY_ID)
     undersized = copy.deepcopy(envelope.model_dump(mode="json"))
     undersized["attestation"]["engineering_benchmark_gate_passed"] = True
     with pytest.raises(ValueError, match="minimum holdout composition"):
         verify_signed_attestation(undersized, public_key, expected_key_id=KEY_ID)
+    understated = copy.deepcopy(envelope.model_dump(mode="json"))
+    understated["attestation"]["limitations"].remove("no_live_search_measurement")
+    with pytest.raises(ValueError, match="mandatory benchmark limitations"):
+        verify_signed_attestation(understated, public_key, expected_key_id=KEY_ID)
+
+
+def test_passing_external_attestation_must_handle_every_ambiguous_case(exchange):
+    private_key, public_key, signed = exchange
+    response = create_response(signed, public_key, expected_key_id=KEY_ID, now=NOW)
+    envelope, _ = evaluate_and_sign(
+        signed, response, private_truth(), scorer=toy_scorer,
+        benchmark_definition=BENCHMARK_DEFINITION,
+        trusted_public_key_pem=public_key, expected_key_id=KEY_ID,
+        private_key=private_key, truth_commitment_secret=TRUTH_COMMITMENT_SECRET, issued_at=NOW,
+    )
+    external = copy.deepcopy(envelope.model_dump(mode="json"))
+    attestation = external["attestation"]
+    attestation.update({
+        "case_count": 120,
+        "family_count": 30,
+        "issue_unit_count": 80,
+        "isolation_profile": "kernel_isolated_immutable_runner",
+        "independent_blind_replication": True,
+        "engineering_benchmark_gate_passed": True,
+        "limitations": [
+            "synthetic_observations",
+            "structural_not_business_outcomes",
+            "rendered_fixtures_not_browser_execution",
+            "no_live_search_measurement",
+            "scorer_cannot_prove_evaluator_independence",
+            "benchmark_does_not_grant_autonomy",
+        ],
+    })
+    attestation["metrics"].update({
+        "true_positives": 80,
+        "false_positives": 0,
+        "false_negatives": 0,
+        "precision": 1.0,
+        "recall": 1.0,
+        "f1": 1.0,
+        "macro_family_recall": 1.0,
+        "no_action_controls": 40,
+        "correct_no_action": 40,
+        "no_action_accuracy": 1.0,
+        "ambiguous_cases": 20,
+        "appropriate_uncertain_outcomes": 0,
+    })
+    with pytest.raises(ValueError, match="ambiguity"):
+        verify_signed_attestation(external, public_key, expected_key_id=KEY_ID)

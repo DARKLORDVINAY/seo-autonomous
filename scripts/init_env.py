@@ -8,7 +8,14 @@ import secrets
 
 
 ROOT = Path(__file__).resolve().parents[1]
-SECRET_NAMES = ("API_TOKEN", "APPROVAL_TOKEN", "ADMIN_TOKEN", "POSTGRES_PASSWORD", "POSTGRES_APP_PASSWORD")
+SECRET_NAMES = (
+    "API_TOKEN",
+    "APPROVAL_TOKEN",
+    "ADMIN_TOKEN",
+    "POSTGRES_PASSWORD",
+    "POSTGRES_API_PASSWORD",
+    "POSTGRES_WORKER_PASSWORD",
+)
 
 
 def generate_env(path: Path = ROOT / ".env") -> bool:

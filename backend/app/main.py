@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import asyncio
+from contextlib import asynccontextmanager
 from datetime import timedelta
 from html import escape
 from pathlib import Path
@@ -12,7 +13,7 @@ from fastapi import Depends, FastAPI, HTTPException, Query, Request
 from fastapi.responses import FileResponse, JSONResponse
 from fastapi.staticfiles import StaticFiles
 from starlette.middleware.trustedhost import TrustedHostMiddleware
-from sqlalchemy import func, select, text
+from sqlalchemy import func, select
 from sqlalchemy.exc import SQLAlchemyError
 from sqlalchemy.orm import Session
 
@@ -23,8 +24,8 @@ from backend.app.api.experiments import router as experiment_router
 from backend.app.config.settings import Settings, get_settings
 from backend.app.contracts import ActionKind, CMSPage, ProviderUnavailable, VerificationPacket, utcnow
 from backend.app.db import models as m
-from backend.app.db.session import get_session
-from backend.app.db.readiness import verify_schema_revision
+from backend.app.db.session import default_engine, get_session
+from backend.app.db.readiness import verify_database_readiness
 from backend.app.observability.logging import instrument
 from backend.app.services import control
 
@@ -34,11 +35,49 @@ Admin = Annotated[Principal, Depends(administrator)]
 Reviewer = Annotated[Principal, Depends(reviewer)]
 Config = Annotated[Settings, Depends(get_settings)]
 
-app = FastAPI(title="Spiral Max SEO Control Plane", version="0.1.0", docs_url="/docs", redoc_url=None)
+
+def verify_api_startup() -> None:
+    """Admit production traffic only after an uncached exact API-role check."""
+    settings = get_settings()
+    if settings.environment != "production":
+        return
+    with default_engine().connect() as connection:
+        verify_database_readiness(
+            connection, environment=settings.environment, profile="api", privilege_cache_seconds=0,
+        )
+
+
+@asynccontextmanager
+async def lifespan(application: FastAPI):
+    application.state.production_admitted = False
+    verify_api_startup()
+    application.state.production_admitted = True
+    try:
+        yield
+    finally:
+        application.state.production_admitted = False
+
+
+app = FastAPI(
+    title="Spiral Max SEO Control Plane", version="0.1.0", docs_url="/docs", redoc_url=None,
+    lifespan=lifespan,
+)
 instrument(app)
 app.add_middleware(TrustedHostMiddleware, allowed_hosts=get_settings().allowed_hosts, www_redirect=False)
 app.include_router(configuration_router)
 app.include_router(experiment_router)
+
+
+@app.middleware("http")
+async def production_admission_latch(request: Request, call_next):
+    """A lifespan-disabled/direct server command cannot bypass DB admission."""
+    try:
+        production = get_settings().environment == "production"
+    except Exception:
+        return JSONResponse(status_code=503, content={"detail": "Runtime configuration is not admissible"})
+    if production and not getattr(request.app.state, "production_admitted", False):
+        return JSONResponse(status_code=503, content={"detail": "Production startup admission has not completed"})
+    return await call_next(request)
 
 
 @app.exception_handler(LookupError)
@@ -67,14 +106,15 @@ def health():
 
 
 @app.get("/readyz")
-def readiness(session: DB):
+def readiness(session: DB, settings: Config):
     try:
-        session.execute(text("SELECT 1"))
-        session.execute(select(m.Site.id).limit(1))
-        verify_schema_revision(session)
+        connection = session.connection()
+        verify_database_readiness(
+            connection, environment=settings.environment, profile="api", privilege_cache_seconds=30,
+        )
         return {"status": "ready"}
     except (SQLAlchemyError, ValueError):
-        raise HTTPException(503, "Database is not reachable or does not match this release's migration head")
+        raise HTTPException(503, "Database is unreachable, has schema drift, or violates runtime privilege policy")
 
 
 @app.get("/api/sites")

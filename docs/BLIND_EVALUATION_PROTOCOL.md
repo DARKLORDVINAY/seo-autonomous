@@ -85,6 +85,9 @@ the evaluator identity and process still require human due diligence.
      --expected-source-fingerprint owner-frozen-source-hash \
      --expected-evaluation-id independently-recorded-evaluation-uuid \
      --expected-challenge-sha256 independently-recorded-challenge-hash \
+     --expected-observations-sha256 independently-recorded-observation-hash \
+     --expected-predictions-sha256 owner-frozen-prediction-hash \
+     --expected-truth-commitment-sha256 independently-recorded-truth-commitment \
      --expected-execution-environment-sha256 independently-recorded-runtime-hash \
      --max-age-hours 168
    ```
@@ -95,7 +98,8 @@ the evaluator identity and process still require human due diligence.
    `BENCHMARK_EXPECTED_DEFINITION_SHA256` and
    `BENCHMARK_EXPECTED_SOURCE_FINGERPRINT`. Also pin the one intended
    `BENCHMARK_EXPECTED_EVALUATION_ID` and
-   `BENCHMARK_EXPECTED_CHALLENGE_SHA256`, plus the immutable runtime/image as
+   `BENCHMARK_EXPECTED_CHALLENGE_SHA256`, the observation, frozen-prediction and
+   private-truth commitments, plus the immutable runtime/image as
    `BENCHMARK_EXPECTED_EXECUTION_ENVIRONMENT_SHA256`; the default import freshness window is
    seven days and is independently bounded by
    `BENCHMARK_ATTESTATION_MAX_AGE_HOURS`. Then submit the signed envelope to the
@@ -121,7 +125,11 @@ the evaluator identity and process still require human due diligence.
 - The evaluator reruns the predictor; an owner-edited prediction is rejected even
   if the owner recomputes its local hash.
 - Attestation arithmetic is recomputed. A passing engineering result cannot carry
-  protocol, false-NO-ACTION, disposition-overclaim or coverage-overclaim errors.
+  protocol, false-NO-ACTION, disposition-overclaim, coverage-overclaim or
+  unsubstantiated-candidate errors, and every preregistered ambiguous case must
+  receive the appropriate uncertain outcome. Every attestation must retain the
+  fixture, non-browser, no-live-measurement, evaluator-independence and
+  no-autonomy scope limitations even when its engineering gate passes.
 - The attestation schema hard-fixes Level 1, production disabled, zero writes,
   zero paid calls, no live model execution and `level_2_eligible=false`.
 - The public schema has no arbitrary prose, case, URL, family or recommendation

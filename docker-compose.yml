@@ -5,8 +5,6 @@ x-runtime-environment: &runtime-environment
   POSTGRES_HOST: db
   POSTGRES_PORT: "5432"
   POSTGRES_DB: ${POSTGRES_DB:-seo}
-  POSTGRES_USER: ${POSTGRES_APP_USER:-seo_app}
-  POSTGRES_PASSWORD: ${POSTGRES_APP_PASSWORD:?Run python scripts/init_env.py first}
   AUTONOMY_LEVEL: ${AUTONOMY_LEVEL:-1}
   PRODUCTION_ENABLED: ${PRODUCTION_ENABLED:-false}
   SHADOW_MODE: ${SHADOW_MODE:-true}
@@ -38,6 +36,8 @@ x-runtime-environment: &runtime-environment
 x-api-environment: &api-environment
   <<: *runtime-environment
   SERVICE_ROLE: api
+  POSTGRES_USER: ${POSTGRES_API_USER:-seo_api}
+  POSTGRES_PASSWORD: ${POSTGRES_API_PASSWORD:?Run python scripts/init_env.py first}
   API_TOKEN: ${API_TOKEN:?Run python scripts/init_env.py first}
   APPROVAL_TOKEN: ${APPROVAL_TOKEN:?Run python scripts/init_env.py first}
   ADMIN_TOKEN: ${ADMIN_TOKEN:?Run python scripts/init_env.py first}
@@ -47,8 +47,17 @@ x-api-environment: &api-environment
   BENCHMARK_EXPECTED_SOURCE_FINGERPRINT: ${BENCHMARK_EXPECTED_SOURCE_FINGERPRINT:-}
   BENCHMARK_EXPECTED_EVALUATION_ID: ${BENCHMARK_EXPECTED_EVALUATION_ID:-}
   BENCHMARK_EXPECTED_CHALLENGE_SHA256: ${BENCHMARK_EXPECTED_CHALLENGE_SHA256:-}
+  BENCHMARK_EXPECTED_OBSERVATIONS_SHA256: ${BENCHMARK_EXPECTED_OBSERVATIONS_SHA256:-}
+  BENCHMARK_EXPECTED_PREDICTIONS_SHA256: ${BENCHMARK_EXPECTED_PREDICTIONS_SHA256:-}
+  BENCHMARK_EXPECTED_TRUTH_COMMITMENT_SHA256: ${BENCHMARK_EXPECTED_TRUTH_COMMITMENT_SHA256:-}
   BENCHMARK_EXPECTED_EXECUTION_ENVIRONMENT_SHA256: ${BENCHMARK_EXPECTED_EXECUTION_ENVIRONMENT_SHA256:-}
   BENCHMARK_ATTESTATION_MAX_AGE_HOURS: ${BENCHMARK_ATTESTATION_MAX_AGE_HOURS:-168}
+
+x-worker-environment: &worker-environment
+  <<: *runtime-environment
+  SERVICE_ROLE: worker
+  POSTGRES_USER: ${POSTGRES_WORKER_USER:-seo_worker}
+  POSTGRES_PASSWORD: ${POSTGRES_WORKER_PASSWORD:?Run python scripts/init_env.py first}
 
 x-application: &application
   image: spiral-max-seo:local
@@ -80,6 +89,7 @@ services:
       POSTGRES_INITDB_ARGS: --auth-host=scram-sha-256
     volumes:
       - seo-postgres:/var/lib/postgresql/data
+      - ./docker/initdb/010-dedicated-cluster.sql:/docker-entrypoint-initdb.d/010-dedicated-cluster.sql:ro
     healthcheck:
       test: [CMD-SHELL, 'pg_isready -U "$${POSTGRES_USER}" -d "$${POSTGRES_DB}"']
       interval: 10s
@@ -97,13 +107,19 @@ services:
     restart: "no"
     command: [migrate]
     environment:
+      # The base stack is a local development/demo path. Any production owner
+      # migration must use a reviewed override that supplies immutable release
+      # and independent database/system/schema pins.
+      ENVIRONMENT: development
       POSTGRES_HOST: db
       POSTGRES_PORT: "5432"
       POSTGRES_DB: ${POSTGRES_DB:-seo}
       POSTGRES_USER: ${POSTGRES_USER:-seo_owner}
       POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:?Run python scripts/init_env.py first}
-      POSTGRES_APP_USER: ${POSTGRES_APP_USER:-seo_app}
-      POSTGRES_APP_PASSWORD: ${POSTGRES_APP_PASSWORD:?Run python scripts/init_env.py first}
+      POSTGRES_API_USER: ${POSTGRES_API_USER:-seo_api}
+      POSTGRES_API_PASSWORD: ${POSTGRES_API_PASSWORD:?Run python scripts/init_env.py first}
+      POSTGRES_WORKER_USER: ${POSTGRES_WORKER_USER:-seo_worker}
+      POSTGRES_WORKER_PASSWORD: ${POSTGRES_WORKER_PASSWORD:?Run python scripts/init_env.py first}
     depends_on:
       db:
         condition: service_healthy
@@ -135,7 +151,7 @@ services:
     restart: unless-stopped
     command: [worker]
     environment:
-      <<: *runtime-environment
+      <<: *worker-environment
       SERVICE_ROLE: worker
     depends_on:
       db:
@@ -143,7 +159,7 @@ services:
       migrate:
         condition: service_completed_successfully
     healthcheck:
-      test: [CMD, python, /app/docker/entrypoint.py, worker, --healthcheck]
+      test: [CMD, python, -m, backend.app.scheduler, --healthcheck]
       interval: 30s
       timeout: 5s
       retries: 3

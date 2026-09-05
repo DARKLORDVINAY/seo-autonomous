@@ -48,18 +48,26 @@ token or administrator token.
 overlay. Build/retrieve that image through a reviewed supply-chain process;
 record its digest, source commit, dependency lock hash, current schema heads,
 previous compatible image digest, and backup receipt before release. A floating
-base-image tag is not a reproducible release pin.
+base-image tag is not a reproducible release pin. The overlay passes the exact
+Compose image selector into the one-shot migration container. Its guarded
+entrypoint validates the digest syntax before constructing an owner database URL
+or creating an engine/running migration code; a missing, mutable or malformed selector
+therefore fails closed before any database operation. API preflight validates
+the same pin again. This in-image check does not independently attest a hostile
+image, so the operator must still obtain and review the digest through the
+trusted release process before invoking Compose.
 
 ## Provider capability checklist
 
 | Requirement | Acceptance condition |
 | --- | --- |
-| PostgreSQL | Dedicated database; tested baseline PostgreSQL 17; durable disk and owner-controlled recovery |
-| Migration identity | Can own/create the public application schema, install triggers, and grant/revoke the restricted runtime role |
-| Runtime identity | No administrative/inherited/ownership authority; passes `verify_runtime_role` |
+| PostgreSQL | Application-dedicated cluster with other-database CONNECT/TEMP denied; tested baseline PostgreSQL 17; durable disk and owner-controlled recovery |
+| Migration identity | Can own/create the public application schema, install triggers, and grant/revoke both restricted runtime roles |
+| API identity | Distinct login; no administrative/inherited/ownership authority; passes the exact `api` profile |
+| Worker identity | Distinct login; cannot update site authority or insert approval/verification; passes the exact `worker` profile |
 | Connectivity | Private network; verified TLS and CA/hostname checking for a managed remote database |
 | Container host | Nonroot image, read-only root filesystem, `/tmp`, graceful shutdown, health checks, restart controls |
-| Secrets | Existing operator-managed store; app/reviewer/admin capabilities distinct; migration owner absent from runtime |
+| Secrets | Existing operator-managed store; app/reviewer/admin and owner/API/worker credentials distinct; migration owner absent from runtime |
 | Ingress | Trusted HTTPS reverse proxy, exact allowed hosts, API private by default; OAuth issuer needed only for remote MCP |
 | Recovery | Encrypted off-host backup, isolated restore drill, explicit RPO/RTO and retention choices |
 
@@ -72,16 +80,33 @@ Two database configurations are distinct:
 - **Bundled Compose:** `POSTGRES_HOST=db`; entrypoint constructs an escaped URL
   from `POSTGRES_DB`, `POSTGRES_PORT`, and the service's assigned login.
 - **Managed PostgreSQL:** omit `POSTGRES_HOST` and supply a verified-TLS
-  `DATABASE_URL` through the secret store. Use a reviewed provider-specific
+  `DATABASE_URL` ending in `sslmode=verify-full` through the secret store. The
+  shared transport gate runs before engine/driver connection in production,
+  including application, bootstrap/migration, direct Alembic and container
+  entrypoint paths. It adds `gssencmode=disable` when absent and rejects a
+  conflicting value so libpq cannot substitute GSSAPI transport for TLS. A
+  discrete remote `POSTGRES_*` configuration instead needs
+  `POSTGRES_SSLMODE=verify-full`. Use a reviewed provider-specific
   service definition; the bundled Compose file is not a drop-in managed-DB
-  override. Migration still requires separate `POSTGRES_USER`,
-  `POSTGRES_PASSWORD`, `POSTGRES_APP_USER`, and `POSTGRES_APP_PASSWORD` settings
-  for the existing separation/grant checks. Never send these values in chat.
+  override. Migration still requires separate `POSTGRES_USER`/
+  `POSTGRES_PASSWORD`, `POSTGRES_API_USER`/`POSTGRES_API_PASSWORD`, and
+  `POSTGRES_WORKER_USER`/`POSTGRES_WORKER_PASSWORD` settings for the owner/API/
+  worker separation and exact grant checks. Never send these values in chat.
 
 No provider resources, account choice, credentials, TLS issuer, backup storage,
 or production ingress are assumed configured by this package.
 
 ## Startup and upgrade gates
+
+Before exposing owner credentials to the migration container, set the following
+from the independently reviewed release/target record: `SEO_RELEASE_IMAGE`,
+`SEO_MIGRATION_EXPECTED_DATABASE`,
+`SEO_MIGRATION_EXPECTED_SYSTEM_IDENTIFIER`, `SEO_MIGRATION_MODE`, and
+`SEO_MIGRATION_EXPECTED_SCHEMA_HEADS`. Use `bootstrap` plus `uninitialized` only
+for a newly created empty `public` schema; use `upgrade` plus the exact sorted
+predecessor head list otherwise. Missing, inferred-at-runtime, mismatched, or
+mutable pins stop before DDL. The disposable CI derives pins mechanically only
+to test this gate; that is not production provenance.
 
 After authorization, the operator uses the guarded container entrypoint, not
 direct production `uvicorn`, so runtime role checks cannot be skipped:
@@ -96,9 +121,19 @@ docker compose -f docker-compose.yml -f docker-compose.verification.yml up -d --
 
 Configuration validation must not print interpolated secrets. Migration is a
 one-shot owner process; API/worker depend on database health and migration
-completion. Preflight checks restricted role, exact Alembic head, canonical
+completion. In the verification overlay, migration first checks the immutable
+`SEO_RELEASE_IMAGE` selector injected by Compose; rejection occurs before owner
+database URL construction or migration invocation. It then reads the target in
+a read-only transaction and repeats database/system/head checks on the exact
+DDL connection after pinning `search_path=public` and taking a nonblocking
+advisory lock. Migration and both runtime-role grants commit atomically.
+Preflight checks restricted role, exact Alembic head, canonical
 Level-1 authority, and the immutable image pin. `/healthz` is process liveness;
-`/readyz` now rejects missing, stale, or future migration revisions. Neither is
+`/readyz` now rejects missing, stale, or future migration revisions and, in
+production, a runtime-role privilege-policy regression. Schema is checked on
+every probe; a stampede lock bounds the set-based privilege check to one per
+30-second success window (and briefly caches failures). Worker ticks remain
+uncached. Neither is
 proof that Google evidence is fresh or a scheduled observation succeeded.
 
 Start the API for review first. Leave the worker stopped until host-specific
@@ -113,31 +148,107 @@ This does not enable live providers or production writes. A different live
 read-only deployment needs its own reviewed configuration, not a flag silently
 removed from this verification package.
 
-## Non-overwriting backups
+## Atomic, non-overwriting backup bundles
 
 The volume is persistence, not disaster recovery. The prepared utility requires
-PostgreSQL client tools and an existing private libpq service with an explicit
-database identity. It receives no password or DSN argument:
+PostgreSQL client tools and an existing private libpq service. It receives no
+password or credential-bearing DSN argument. Before using it, independently
+record the expected database name, TLS hostname, numeric endpoint,
+`pg_control_system().system_identifier`, Alembic head(s), immutable release
+image, full Git commit, deployed runtime identity and canonical checkpoint
+identity. The following values are illustrative and must be replaced with pins
+from the release record:
 
 ```sh
-python -m scripts.backup_database --service seo_checkpoint_source --output-directory /operator/private/seo-backups --writers-stopped
+python -m scripts.backup_database \
+  --service seo_checkpoint_source \
+  --output-directory /operator/private/seo-backups \
+  --writers-stopped \
+  --expected-database seo_production \
+  --expected-server-identity 7439284610293847561 \
+  --expected-server-address 192.0.2.10 \
+  --expected-server-port 5432 \
+  --tls-server-name db.example.net \
+  --schema-head 0002_runtime_role_split \
+  --release-image registry.example/seo@sha256:0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef \
+  --release-commit 0123456789abcdef0123456789abcdef01234567 \
+  --runtime-identity deployment:seo-prod-20260904T120000Z \
+  --checkpoint-identity action:00000000-0000-4000-8000-000000000000
 ```
 
+Child PostgreSQL processes receive a minimal environment: executable/home paths,
+explicit service/passfile/system-service-file paths, optional system certificate
+paths, fixed C locale/UTC, and fixed TLS defaults. Ambient DSNs, `PGOPTIONS`,
+bearer tokens and unrelated process secrets are not inherited. Every `psql` and
+`pg_dump` connection also receives a bounded, non-secret conninfo override after
+the service name: the exact database, certificate hostname, numeric address and
+port, `sslmode=verify-full`, and `gssencmode=disable`. Direct conninfo values
+override weaker or multi-host service-file values. The passfile/service file
+still supplies the login and credential without placing either password in a
+command argument or environment variable.
+
 The operator stops writers first and confirms that fact; the script does not
-stop or restart anything. It creates an exclusive private `.partial` file,
-checks successful `pg_dump`, verifies archive listing, computes SHA-256, then
-promotes to a unique `.dump` and receipt. Failure retains the partial artifact
-and leaves writers stopped. It never overwrites an existing backup. A receipt
-explicitly says `restore_verified=false`: listing an archive is not a restore.
+stop or restart anything. Before and after dumping, it checks the connected
+database, numeric endpoint, cluster system identifier and Alembic heads against
+the independent pins and requires the complete source observations to match. The
+dump uses the same exact target override. It records both source-observation
+hashes and the PostgreSQL server/client versions. It writes the
+archive and receipt inside one hidden private staging directory, fsyncs both,
+and atomically renames the directory to a unique `.backup` bundle. An existing
+bundle is never replaced. A failure before rename leaves only the hidden staging
+directory for private diagnosis; a failure after rename can leave only a complete
+two-member bundle, never one published member. Keep writers stopped and run the
+verifier before deciding whether such a bundle is usable.
+
+Any `pg_dump` stderr output, including a warning with exit status zero, blocks
+promotion. Archive-list stderr does too. The receipt binds the libpq service,
+database, cluster system identifier, address/port, server and client versions,
+schema heads, immutable image, source commit, runtime/checkpoint identities,
+dump start/end and archive-validation/receipt timestamps. Receipt schema v3 also
+records the exact TLS/GSS policy and equal pre/post source hashes. It records
+`warnings_present=false` and explicitly says `restore_verified=false`: listing
+an archive is not a restore. Before running the verifier, preserve the emitted
+archive SHA-256 and all expected source/release/checkpoint pins in an independently
+controlled release record. The verifier requires those pins on its command line;
+validly shaped but wrong identities fail. It also requires exactly the two
+declared members, bounds and orders UTC timestamps, rechecks private modes, size,
+SHA-256 and archive listing:
+
+```sh
+python -m scripts.verify_backup \
+  --receipt /operator/private/seo-backups/seo-20260904T120000Z-0123456789ab.backup/seo-20260904T120000Z-0123456789ab.json \
+  --expected-service seo_checkpoint_source \
+  --expected-database seo_production \
+  --expected-server-identity 7439284610293847561 \
+  --expected-server-address 192.0.2.10 \
+  --expected-server-port 5432 \
+  --expected-tls-server-name db.example.net \
+  --schema-head 0002_runtime_role_split \
+  --expected-release-image registry.example/seo@sha256:0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef \
+  --expected-release-commit 0123456789abcdef0123456789abcdef01234567 \
+  --expected-runtime-identity deployment:seo-prod-20260904T120000Z \
+  --expected-checkpoint-identity action:00000000-0000-4000-8000-000000000000 \
+  --expected-archive-sha256 0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef
+```
+
+The pre/post checks and exact address remove service-file failover between
+unrelated endpoints. They are not a cryptographic proof of which backend a
+same-address database proxy selected during the middle connection. The bundle
+remains an operator-authored assertion plus archive-integrity record, not an
+authenticated provenance signature; retain the independent release record and
+complete an isolated restore before recovery use.
 
 The custom archive preserves schema and data; global roles need separate
 operator-managed recovery. Restore only archives from a trusted source because
 restoration executes database code. These are documented properties of
 [PostgreSQL pg_dump](https://www.postgresql.org/docs/17/app-pgdump.html).
 
-Copy successful archives and receipts to encrypted off-host storage with
-operator-selected retention. Keep secrets separate. Fsync of the file is not
-proof of off-host durability or that an object-store copy is recoverable.
+Copy the complete successful bundle to encrypted off-host storage with
+operator-selected retention. Where the storage system cannot atomically publish
+a directory, upload the archive first and the receipt last as the commit marker;
+never inventory an archive without its verified receipt as a usable backup. Keep
+secrets separate. Local fsync is not proof of off-host durability or that an
+object-store copy is recoverable.
 
 ## Isolated restore and rollback
 
@@ -151,12 +262,16 @@ role, provenance, and retained execution/cost leases. Review any uncertain
 external action before resuming recurrence. The chosen flags and transaction
 behavior are documented in [PostgreSQL pg_restore](https://www.postgresql.org/docs/17/app-pgrestore.html).
 
-CI's new restore drill creates two uniquely named databases inside the existing
+The real restore drill creates two uniquely named databases inside the existing
 disposable PostgreSQL service, takes an actual custom archive, restores it,
 compares every canonical table, and exercises owner-trigger/runtime-ACL
 protection. It never restores over `seo_ci` or any user database. When that
 service is unavailable, the test skips explicitly; local mocked commands do not
-substitute for it.
+substitute for it. Running this gate requires both `TEST_POSTGRES_URL` and the
+exact disposable container ID in `TEST_POSTGRES_CONTAINER`. Historical linked
+CI evidence does not attest the current unpushed or otherwise changed local tree.
+That disposable drill uses an explicitly test-only local-socket adapter; it
+tests dump/restore fidelity, not the production verified-TLS transport boundary.
 
 For application rollback, stop recurrence and select the recorded previous
 immutable image **only if schema-compatible**. Readiness refuses a different

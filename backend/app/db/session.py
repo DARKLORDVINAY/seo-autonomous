@@ -8,9 +8,12 @@ from sqlalchemy.orm import Session, sessionmaker
 from sqlalchemy.pool import StaticPool
 
 from backend.app.config.settings import get_settings
+from backend.app.db.transport import normalize_database_environment, validate_database_engine_options
 
 
-def make_engine(url: str, **kwargs) -> Engine:
+def make_engine(url: str, *, environment: str | None = None, **kwargs) -> Engine:
+    normalized_environment = normalize_database_environment(environment)
+    url = validate_database_engine_options(url, environment=environment, options=kwargs)
     if url.startswith("postgresql://"):
         url = url.replace("postgresql://", "postgresql+psycopg://", 1)
     options: dict = {"pool_pre_ping": True}
@@ -19,6 +22,11 @@ def make_engine(url: str, **kwargs) -> Engine:
         if url in ("sqlite://", "sqlite:///:memory:"):
             options["poolclass"] = StaticPool
     options.update(kwargs)
+    if normalized_environment == "production" and url.startswith(("postgresql://", "postgresql+psycopg://")):
+        # Caller-supplied connect_args/options were already rejected above.
+        # This trusted constant takes effect during DBAPI startup, before the
+        # dialect or application can resolve any unqualified name.
+        options["connect_args"] = {"options": "-csearch_path=public"}
     engine = create_engine(url, **options)
     if engine.dialect.name == "sqlite":
         @event.listens_for(engine, "connect")
@@ -39,7 +47,8 @@ def make_session_factory(engine: Engine) -> sessionmaker[Session]:
 
 @lru_cache(maxsize=1)
 def default_engine() -> Engine:
-    return make_engine(get_settings().database_url)
+    settings = get_settings()
+    return make_engine(settings.database_url, environment=settings.environment)
 
 
 @lru_cache(maxsize=1)

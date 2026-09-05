@@ -567,8 +567,23 @@ def propose_model_title(session, site, opportunity, problem, evidence, failures,
     verified = asyncio.run(verify_proposal(problem, proposal, evidence, proposer_id="content-strategist",
         revision_target={"before": revision.before_json, "after": revision.after_json, "revision_hash": revision.revision_hash},
         prior_failures=failures, **runtime_options(session, site, settings, task_id=task_id)))
+    if settings.service_role == "worker":
+        # The scheduler's database identity cannot issue authoritative
+        # Verification rows. Retain the bounded adversarial analysis as a
+        # preview; an API/reviewer path must independently verify the revision.
+        return {
+            **revision_result,
+            "status": "awaiting_api_verification",
+            "verification_preview": verified["verification"],
+            "authoritative_verification_recorded": False,
+        }
     record_verification(session, revision_id=revision.id, packet=VerificationPacket.model_validate(verified["verification"]))
-    return {**revision_result, "status": "awaiting_human_approval", "verification": verified["verification"]}
+    return {
+        **revision_result,
+        "status": "awaiting_human_approval",
+        "verification": verified["verification"],
+        "authoritative_verification_recorded": True,
+    }
 
 
 def execute_eligible_revisions(session: Session, site: m.Site, settings: Settings) -> dict:
@@ -651,7 +666,12 @@ def _run_leased_cycle(session: Session, site_id: str, settings: Settings, *, ide
         result["diagnosis"] = analyze_site(session, site_id)
         result["specialists"] = run_specialists(session, site, settings) if site.autonomy_level >= 1 else {"decision": "NO-ACTION", "reason": "Observer mode"}
         result["execution"] = execute_eligible_revisions(session, site, settings)
-        result["measurement"] = evaluate_due_experiments(session, site_id)
+        if settings.service_role == "worker":
+            result["measurement"] = evaluate_due_experiments(
+                session, site_id, authority_updates_allowed=False,
+            )
+        else:
+            result["measurement"] = evaluate_due_experiments(session, site_id)
         job.status, job.completed_at, job.result_json = "completed", utcnow(), result
         session.commit()
         return {"job_id": job.id, "status": job.status, "result": result}

@@ -46,6 +46,9 @@ def main(argv: list[str] | None = None) -> int:
     verify.add_argument("--expected-source-fingerprint", required=True)
     verify.add_argument("--expected-evaluation-id", required=True)
     verify.add_argument("--expected-challenge-sha256", required=True)
+    verify.add_argument("--expected-observations-sha256", required=True)
+    verify.add_argument("--expected-predictions-sha256", required=True)
+    verify.add_argument("--expected-truth-commitment-sha256", required=True)
     verify.add_argument("--expected-execution-environment-sha256", required=True)
     verify.add_argument("--max-age-hours", type=int, default=168)
     args = parser.parse_args(argv)
@@ -78,6 +81,10 @@ def main(argv: list[str] | None = None) -> int:
                     or attestation.challenge_sha256 != args.expected_challenge_sha256
                     or attestation.execution_environment_sha256 != args.expected_execution_environment_sha256):
                 raise ValueError("Attestation differs from the intended evaluation, challenge or execution environment")
+            if (attestation.observations_sha256 != args.expected_observations_sha256
+                    or attestation.predictions_sha256 != args.expected_predictions_sha256
+                    or attestation.truth_commitment_sha256 != args.expected_truth_commitment_sha256):
+                raise ValueError("Attestation differs from frozen observation, prediction or truth commitments")
             if not 1 <= args.max_age_hours <= 720:
                 raise ValueError("Attestation age bound must be between 1 and 720 hours")
             current = datetime.now(timezone.utc)
