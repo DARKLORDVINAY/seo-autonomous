@@ -37,7 +37,7 @@
     "level_2_eligible": false,
     "report": "docs/DURABLE_BOUNDARY_HARDENING_CHECKPOINT.md",
     "postgres_compose_restore_gate": "historically_passed_for_earlier_commit_only; ten explicit infrastructure gates not executed for current local commit",
-    "source_ci": {
+    "historical_source_ci_for_earlier_detector_v3_runtime": {
       "run_id": 33821865522,
       "tested_code_commit": "93850f80b5c5cbe5b958ff93ed7786af2a4a4272",
       "url": "https://github.com/DARKLORDVINAY/seo-autonomous/actions/runs/33821865522",
@@ -48,7 +48,17 @@
       "actual_postgres_chaos_and_restore": true,
       "fixed_zero_compose_package": true,
       "local_fixture_rendered_pages": 26,
-      "live_public_release_changed": false
+      "live_public_release_changed": false,
+      "scope": "Historical exact-tree evidence for the earlier detector-v3 runtime only; not evidence for local hardening commit 7a612d006f938e79a485f9887539f96731e8390a."
+    },
+    "last_verified_pr6_ci": {
+      "run_id": 33822256297,
+      "head_commit": "b6b91b20af690c6c972f7f8e223feadf43756331",
+      "tree": "61291ae923ebec791243aa655f7a16929a5e37e3",
+      "passed": 883,
+      "failed": 0,
+      "skipped": 0,
+      "scope": "Last verified remote PR 6 state; not re-fetched in this checkpoint and not evidence for local hardening commit 7a612d006f938e79a485f9887539f96731e8390a."
     },
     "local_hardening": {
       "code_commit": "7a612d006f938e79a485f9887539f96731e8390a",
@@ -344,7 +354,7 @@
     "detector-development v3 source-to-destination, canonical-cycle, robots-intent, soft-404, sitemap and graph evidence gates",
     "48-case development split training diagnostic reached 36 TP, 0 FP/FN and 18/18 NO-ACTION controls; explicitly not blind evidence"
   ],
-  "updated_at": "2026-09-04T00:31:35Z",
+  "updated_at": "2026-09-04T18:12:55Z",
   "phase_status": {
     "0": "documentation and capability checks complete",
     "1": "foundation and actual PostgreSQL/container CI passed; durable deployment pending",

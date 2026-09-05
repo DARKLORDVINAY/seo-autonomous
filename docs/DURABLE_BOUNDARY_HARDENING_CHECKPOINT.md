@@ -35,11 +35,35 @@ this work.
 | Git diff/whitespace validation | passed |
 | CLI import/help smoke tests | passed; one pre-existing Pydantic warning |
 
+The JUnit artifact independently records 1,070 collected outcomes: 1,060
+passed, 10 skipped, and zero failures/errors. The single known-warning count is
+from the captured pytest/CLI console summary, not a field attested by JUnit.
+
 The ten complete-suite skips are explicit: one actual dump/restore test, two
-live PostgreSQL migration/audit tests, two runtime-role tests and five
-PostgreSQL scheduler-chaos tests. Docker/Compose and PostgreSQL are unavailable
+live PostgreSQL migration gates (the general audit and the direct-Alembic
+hostile-default gate), two runtime-role tests and five PostgreSQL
+scheduler-chaos tests. Docker/Compose and PostgreSQL are unavailable
 in this environment. Those gates remain required for this exact commit; a
 historical CI result for another commit is not evidence for this tree.
+
+## Recovery-integrity correction
+
+The first local canonical follow-up action, identified in recovery history as
+`94df1bd9-00ff-5cd9-b7dc-cc55553ce2a9`, used a legacy packet-hash convention
+that excluded the top-level `production_write` and `external_mutation` flags.
+The SQLite/database and archive digests still bound the stored bytes, and no
+mutation was recorded, but that packet digest alone was not a sufficient safety
+envelope. It is preserved as an append-only failure, not rewritten. The
+superseding canonical receipt hashes every substantive payload field—including
+both safety flags—and excludes only the digest itself.
+
+The recovery audit also requires the ten skipped checks to be enumerated as
+`1 + 1 + 1 + 1 + 1 + 5 = 10`: dump/restore, general live migration/audit,
+direct-Alembic hostile-default, actual role split, runtime-role immutability,
+and five scheduler-chaos cases. Machine-consumed recovery paths are
+archive-root-relative and contain no parent traversal. The committed mission
+document labels earlier remote CI by exact scope; the canonical database and
+latest recovery receipt remain authoritative for post-commit state.
 
 ## Material hardening
 
