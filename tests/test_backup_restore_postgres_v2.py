@@ -61,7 +61,10 @@ def test_actual_postgres_dump_restore_preserves_rows_audit_guards_and_roles(tmp_
         for name in (source_name, restored_name):
             with owner.connect() as connection:
                 connection.execute(text(f'CREATE DATABASE "{name}"'))
-            created.append(name)
+                created.append(name)
+                # CI's initial cluster isolation predates these databases. Keep
+                # each exact fixture-owned database isolated, including source.
+                connection.execute(text(f'REVOKE CONNECT, TEMPORARY ON DATABASE "{name}" FROM PUBLIC'))
         source_url = url.set(database=source_name).render_as_string(hide_password=False)
         restored_url = url.set(database=restored_name).render_as_string(hide_password=False)
         migrate(source_url)
@@ -132,6 +135,11 @@ def test_actual_postgres_dump_restore_preserves_rows_audit_guards_and_roles(tmp_
         with runtime.connect() as connection:
             verify_runtime_role(connection)
             verify_schema_revision(connection)
+            source_privileges = connection.execute(text(
+                "SELECT has_database_privilege(current_user, :database, 'CONNECT'), "
+                "has_database_privilege(current_user, :database, 'TEMPORARY')"
+            ), {"database": source_name}).one()
+            assert tuple(source_privileges) == (False, False)
         # Owner-level trigger protection survives, independently of ACLs.
         with restored.connect() as connection:
             with pytest.raises(DBAPIError):

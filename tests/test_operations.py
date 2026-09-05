@@ -565,6 +565,7 @@ def test_migration_entrypoint_defaults_to_production_transport_policy(monkeypatc
 
 @pytest.mark.parametrize("image", ["spiral-max-seo:local", "registry.test/seo:latest", ""])
 def test_verification_migration_rejects_mutable_image_before_database_or_migrate(monkeypatch, image):
+    monkeypatch.setenv("ENVIRONMENT", "production")
     monkeypatch.setenv("VERIFICATION_ONLY", "true")
     monkeypatch.setenv("SEO_RELEASE_IMAGE", image)
     attempted = []
@@ -586,6 +587,7 @@ def test_verification_migration_rejects_mutable_image_before_database_or_migrate
     "sha256:" + "b" * 64,
 ])
 def test_verification_migration_accepts_exact_digest_before_migrate(monkeypatch, image):
+    monkeypatch.setenv("ENVIRONMENT", "production")
     monkeypatch.setenv("VERIFICATION_ONLY", "true")
     set_production_migration_pins(monkeypatch)
     monkeypatch.setenv("SEO_RELEASE_IMAGE", image)
@@ -615,6 +617,25 @@ def test_verification_migration_accepts_exact_digest_before_migrate(monkeypatch,
         ("preflight", "postgresql+psycopg://owner@db/seo", "seo", "production"),
         ("migrate", "postgresql+psycopg://owner@db/seo", "seo", "production"),
     ]
+
+
+@pytest.mark.parametrize("environment", ["test", "development"])
+def test_verification_migration_rejects_nonproduction_before_database_or_migrate(monkeypatch, environment):
+    monkeypatch.setenv("ENVIRONMENT", environment)
+    monkeypatch.setenv("VERIFICATION_ONLY", "true")
+    set_production_migration_pins(monkeypatch)
+    attempted = []
+    monkeypatch.setattr(
+        entrypoint,
+        "database_url_from_environment",
+        lambda **_kwargs: attempted.append("database-url") or "sqlite://",
+    )
+    monkeypatch.setattr(bootstrap_module, "migrate", lambda *_args, **_kwargs: attempted.append("migrate"))
+
+    with pytest.raises(ValueError, match="Verification-only migration requires the production environment"):
+        entrypoint.main(["migrate"])
+
+    assert attempted == []
 
 
 @pytest.mark.parametrize(("name", "value"), [
