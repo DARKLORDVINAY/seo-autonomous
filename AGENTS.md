@@ -44,6 +44,12 @@ Reread a source when it changes or its relevant content is no longer available.
 
 ## Work and completion
 
+- For substantial implementation work, state concise completion criteria from
+  the current brief: observable outcome, scope, required evidence and any final
+  authorization gate. Reuse an existing task contract when it covers these;
+  update the criteria when the authorized scope changes.
+  Do not add a confirmation step just to approve the wording. A plan, unexecuted
+  implementation or unsupported success summary does not satisfy the criteria.
 - Ask only for missing information that materially changes the task or for
   authorization that is actually absent. Continue independent authorized work
   while a dependent step is blocked. Do not repeat a satisfied permission request.

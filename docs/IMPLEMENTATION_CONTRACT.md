@@ -7,6 +7,12 @@ through the Mission Governor. After an explicit handoff or assignment completion
 the task owner may edit files required by the authorized task. Coordinate schema
 changes through the Mission Governor.
 
+Use separate Git worktrees for concurrent implementation assignments whose edits
+or Git operations could interfere. Read-only review and edits with no such
+interference can share a workspace.
+One integrator reconciles completed changes and checks the combined diff before
+reporting completion; separate worktrees do not replace ownership and handoffs.
+
 ## Cell ownership
 
 The following map allocates active implementation cells; it does not impose
@@ -71,3 +77,17 @@ Search visibility is a proxy; qualified conversion value is the objective.
 Each cell supplies executable code, focused risk-based tests, interface details,
 test evidence and remaining limitations. Root owns deployment and persistence.
 Use `.venv/bin/python -m pytest <owned tests>` from repository root.
+
+When independent development review is warranted by risk, complexity or material
+uncertainty, the reviewer assesses the completion criteria, final diff and evidence
+directly. Treat the implementer's summary as claims to check. The reviewer does
+not edit the implementation, but may run authorized fixture checks in a disposable
+workspace. Bind evidence to the reviewed commit/tree or immutable artifact and
+record the check, result, environment and limitations. Evidence reuse, reruns and
+required final-revision CI/release checks follow [AGENTS.md](../AGENTS.md).
+
+For work spanning sessions, update a concise checkpoint when material state
+changes or work is handed off: revision, completed criteria, evidence locations,
+remaining work and applicable authorization with its source and scope. Distinguish
+fresh observations from historical evidence. Recording authority does not expand it.
+Preserve historical records and omit secrets from checkpoints.

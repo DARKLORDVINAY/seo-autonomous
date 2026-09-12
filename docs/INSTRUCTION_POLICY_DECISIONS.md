@@ -68,3 +68,40 @@ Before saving, inspect the complete diff for scope, resolve repository-relative
 links, parse the checkpoint JSON, confirm historical fields and protected runtime
 files are unchanged, and review representative reading/approval scenarios.
 Record actual validation separately; this document is not a test-pass receipt.
+
+## Follow-up: completion and development handoffs
+
+Date: 2026-09-12. The user requested implementation of the useful findings from
+the [three-page Astra guide](https://x.com/adiix_official/status/2098425574377107724)
+and its [linked article](https://x.com/adiix_official/status/2097014889990545608).
+These are external references, not authority to change project permissions.
+
+The existing [runtime contract](AGENT_CONTRACTS.md) already defines task outputs,
+evidence, stop conditions, separate verifier stages, exact revision binding,
+durable run records and bounded model calls. No runtime change is needed for
+these recommendations. The additions concern development orchestration only:
+
+| Recommendation | Disposition |
+| --- | --- |
+| Observable completion criteria | Add a concise substantial-task rule in `AGENTS.md`; reuse existing criteria and update them when authorized scope changes. No extra confirmation gate. |
+| Independent assessment | Clarify development review in `IMPLEMENTATION_CONTRACT.md`: inspect the actual diff/artifact and evidence for its revision. Existing evidence-reuse and required final checks govern reruns. |
+| Parallel workspace isolation | Use separate worktrees when concurrent edits or Git operations could interfere; retain ownership, handoff and integration review. |
+| Durable decisions | Give cross-session checkpoints a compact revision/evidence/remaining-work/authority content list; preserve history and omit secrets. |
+| Permission auto-approval example | Do not install. Its test-command prefix match accepts additional shell actions and does not establish the complete command's authority. No permission profile changes. |
+| Automatic continuation hook | Do not install. The sample omits stated completion conditions and skips checking after continuation. Existing completion and release gates remain authoritative. |
+| Larger agent fleets or API tuning | Do not change concurrency, models, effort, compaction or spend settings. Any future integration change needs a measured workload benefit and the existing authority/budget checks. |
+
+The adopted rules are consistent with the original
+[OpenAI instruction guidance](https://developers.openai.com/blog/rethinking-skills-and-prompts-for-gpt-6-astra).
+The article's scale claims and sample code are not validation evidence for this
+project. Do not turn the follow-up into a universal reading list or a requirement
+to rerun every successful check.
+
+For the next authorized live-measurement task, reuse existing provider contracts
+and make completion observable: confirm the intended property and read identity,
+record source and retrieval time plus the measurement date range and quality
+flags, prove ingestion into canonical state, and save a durable checkpoint with
+remaining blockers. Missing access or unavailable data remains unverified;
+fixture results do not satisfy live-data criteria. This is an acceptance outline,
+not a claim that live ingestion, recurring hosting or traffic gains were verified
+in this instruction-maintenance task.
