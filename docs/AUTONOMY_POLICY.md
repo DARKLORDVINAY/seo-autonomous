@@ -8,6 +8,13 @@ The release supports levels 0–2, defaults to Level 1, and starts with global/s
 | 1 | Prepare evidence and drafts; every production revision needs a separate human approval. |
 | 2 | Only explicitly earned, supported categories may omit per-revision approval; verifier, provenance, conversion, policy and concurrency gates still apply. A human veto always wins. |
 
+Complete the proposed revision, applicable validation, review and rollback
+preparation before requesting a Level 1 publication decision. A generic Sites or
+hosting workflow's publish-by-default rule applies only after the applicable
+project approval is satisfied; it cannot grant production authority. Reuse a
+prior approval only for the exact revision and scope it covers and only while
+the existing expiry, veto, policy and concurrency checks remain satisfied.
+
 An operator bearer token permits semantic observation/proposal/execution requests, never human approval or policy configuration. Reviewer and administrator tokens are distinct. Tokens are deployment-wide capabilities for a single-owner installation, not multi-customer SaaS entitlements. An administrator cannot count their own proposal review as independent.
 
 The scheduler is not additional authority. Global production enablement, shadow mode, site enablement, site/global level, budget, suspension, exact verification and any current human veto are enforced by the core path. Caller-supplied labels such as `risk=LOW`, `approved=true` or `source_trust=trusted` cannot create authority.

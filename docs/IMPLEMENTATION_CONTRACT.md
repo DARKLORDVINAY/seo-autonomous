@@ -1,10 +1,17 @@
 # Shared implementation contract
 
 Python 3.12. Package imports are `backend.app`. SQLAlchemy 2 synchronous sessions.
-Shared immutable boundary types live in `backend/app/contracts.py`. Do not change
-another cell's files. Coordinate schema changes through the Mission Governor.
+Shared immutable boundary types live in `backend/app/contracts.py`. During active
+parallel work, respect current file assignments and coordinate overlapping changes
+through the Mission Governor. After an explicit handoff or assignment completion,
+the task owner may edit files required by the authorized task. Coordinate schema
+changes through the Mission Governor.
 
 ## Cell ownership
+
+The following map allocates active implementation cells; it does not impose
+permanent ownership after their assignments end. Current explicit assignments
+govern concurrent work.
 
 - Foundation: `backend/app/config/`, `backend/app/db/`, `alembic.ini`, migrations,
   `tests/test_database.py`, `tests/test_config.py`.
