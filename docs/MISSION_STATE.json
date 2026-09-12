@@ -1,5 +1,13 @@
 {
   "schema_version": 1,
+  "checkpoint_interpretation": {
+    "added_on": "2026-09-12",
+    "record_scope": "Historical build recovery capsule; existing fields and timestamps retain their original evidence scope.",
+    "pending_action_rule": "Before replaying a pending approval or freeze, reconcile it with the latest applicable user instruction and recorded decision for the same action and scope. Keep unresolved restrictions in force. External state proves only what happened, not permission.",
+    "workflow": "../AGENTS.md",
+    "instruction_change_record": "INSTRUCTION_POLICY_DECISIONS.md",
+    "runtime_authority_changed": false
+  },
   "current_verification_checkpoint": {
     "date": "2026-09-04",
     "scope": "local_verification_database_migration_recovery_execution_hardening_only_no_account_hosting_public_site_or_autonomy_actions",

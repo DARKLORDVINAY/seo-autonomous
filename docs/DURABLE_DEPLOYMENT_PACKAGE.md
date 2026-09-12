@@ -1,8 +1,12 @@
 # Durable deployment package: prepared, not provisioned
 
-Status: the current user instruction freezes all account, credential, hosting,
-and production activity. This document is an operator runbook for a later,
-explicitly authorized deployment. No durable host was created by this audit.
+Historical checkpoint status: account, credential, hosting and production
+activity was frozen during the audit that created this package. No durable host
+was created by that audit. Before any later deployment, reconcile that freeze
+with the latest applicable user instruction and recorded authorization for the
+same action and scope. The freeze remains in force unless such authorization
+supersedes it; elapsed time or a documentation update does not lift it. This is
+an operator runbook, not deployment authorization.
 
 The existing PostgreSQL + FastAPI + worker Compose architecture is retained.
 Cloudflare Pages hosts the public static Test Lab; it does not replace the

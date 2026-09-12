@@ -225,7 +225,15 @@ Use `docker compose config --quiet` to validate configuration without printing i
 
 ## Validation limits
 
-Run the complete fixture/test suite and lint locally. Set `TEST_POSTGRES_URL` to
+During implementation, run tests and lint for the affected behavior. Run the
+complete fixture/test suite and lint for integration/release validation, or when
+broad risk, changed scope or failures justify it. Reuse a successful result only
+while the relevant source, dependencies and environment are unchanged; record its
+scope and provenance rather than claiming a new run. This does not replace any
+required CI gate for the final reviewed commit, including PostgreSQL migrations,
+privileges and leases, container startup, and backup/recovery verification.
+
+Set `TEST_POSTGRES_URL` to
 an isolated owner-capable PostgreSQL test instance to exercise actual migrations,
 append-only triggers, leases, and runtime-role rejection. The dump/restore gate
 also requires `TEST_POSTGRES_CONTAINER` to be the exact 12–64 lowercase-hex ID of
@@ -235,8 +243,10 @@ tests create and remove only their own randomly named databases and runtime role
 They must not point at an operational database account without authority to
 create isolated test databases.
 
-CI can additionally build/start the Compose stack and verify demo bootstrap using
-the restricted runtime role. A historical successful CI run applies only to its
+CI also builds/starts the Compose stack and verifies demo bootstrap using
+the restricted runtime role; retain all required gates for the final reviewed
+commit. A skipped or unavailable PostgreSQL gate is unverified, never a pass.
+A historical successful CI run applies only to its
 recorded commit. Until these gates pass for the current tree, a machine without
 Docker/PostgreSQL has only local Python and configuration validation; it has not
 validated the current container or real backup/restore behavior.
